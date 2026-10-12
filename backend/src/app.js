@@ -57,12 +57,21 @@ app.use(
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
-// API Routes
+// API Routes (Mounted under /api standard, and root aliases for client resilience)
 app.use('/api/health', healthRoutes);
+app.use('/health', healthRoutes);
+
 app.use('/api/auth', authRoutes);
+app.use('/auth', authRoutes);
+
 app.use('/api/shipments', shipmentRoutes);
+app.use('/shipments', shipmentRoutes);
+
 app.use('/api/watchlist', watchlistRoutes);
+app.use('/watchlist', watchlistRoutes);
+
 app.use('/api/analytics', analyticsRoutes);
+app.use('/analytics', analyticsRoutes);
 
 // Root informational route
 app.get('/', (req, res) => {

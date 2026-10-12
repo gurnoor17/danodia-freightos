@@ -47,8 +47,13 @@ export class ApiError extends Error {
     this.errors = errors;
   }
 }
+function getNormalizedApiUrl(): string {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+  const clean = envUrl.trim().replace(/\/+$/, '');
+  return clean.endsWith('/api') ? clean : `${clean}/api`;
+}
 
-const DEFAULT_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const DEFAULT_API_URL = getNormalizedApiUrl();
 
 /**
  * Executes a resilient fetch with automatic fallback for macOS localhost/127.0.0.1 port 5000 collision.
