@@ -47,3 +47,7 @@ coverage/
 
 # Next.js agent docs
 AGENTS.md
+
+# Postman workspace artifacts
+.postman/
+postman/

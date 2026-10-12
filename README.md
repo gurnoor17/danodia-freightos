@@ -1,6 +1,6 @@
 # Shipment Manager (Danodia FreightOS)
 
-> **Phase 2: Backend Authentication System**  
+> **Phase 3: Login & Registration UI (Authentication Client)**  
 > Enterprise Global Logistics & Shipment Management Platform
 
 ---
@@ -9,8 +9,9 @@
 
 **Shipment Manager (Danodia FreightOS)** is an enterprise web application designed to manage global shipments, cargo metrics, logistics dates, and shipment tracking across international supply chains.
 
-* **Phase 1**: Established foundational full-stack architecture, Next.js frontend, Express backend, PostgreSQL connection pool, and health check endpoint.
-* **Phase 2**: Implemented a robust, secure **Backend Authentication System** featuring password hashing (bcrypt, salt rounds 12), stateless JWT access tokens, Joi input validation, rate limiting, and user profile management in PostgreSQL.
+* **Phase 1**: Established foundational full-stack architecture, Next.js frontend, Express backend, PostgreSQL connection pool, and health-check endpoint.
+* **Phase 2**: Implemented backend authentication system with bcrypt password hashing (12 salt rounds), stateless JWT access tokens, Joi validation, rate limiting, and users database migration.
+* **Phase 3**: Built polished, accessible, and responsive **Login and Registration Pages** (`/login`, `/register`), route protection for `/dashboard`, centralized API client with fallback resiliency, and React AuthContext state management.
 
 ---
 
@@ -22,15 +23,32 @@ shipment-manager/
 │   ├── public/
 │   │   └── .gitkeep
 │   ├── src/
-│   │   └── app/
-│   │       ├── favicon.ico
-│   │       ├── globals.css
-│   │       ├── layout.tsx
-│   │       └── page.tsx
+│   │   ├── app/
+│   │   │   ├── dashboard/
+│   │   │   │   └── page.tsx        (protected placeholder dashboard)
+│   │   │   ├── login/
+│   │   │   │   └── page.tsx        (login page with validation)
+│   │   │   ├── register/
+│   │   │   │   └── page.tsx        (registration page with validation)
+│   │   │   ├── favicon.ico
+│   │   │   ├── globals.css
+│   │   │   ├── layout.tsx          (AuthProvider wrapper & SaaS styling)
+│   │   │   └── page.tsx            (root auth-aware redirect)
+│   │   ├── components/
+│   │   │   ├── Alert.tsx           (accessible error/success banner)
+│   │   │   ├── AuthLayout.tsx      (Danodia FreightOS branding layout)
+│   │   │   ├── FormInput.tsx       (accessible form input with error state)
+│   │   │   ├── PasswordToggle.tsx  (show/hide password toggle)
+│   │   │   └── SubmitButton.tsx    (primary button with loading spinner)
+│   │   ├── context/
+│   │   │   └── AuthContext.tsx     (React Context auth state manager)
+│   │   └── lib/
+│   │       └── api.ts              (centralized API client & security docs)
 │   ├── .env.local.example
-│   ├── .env.local             (local secrets — gitignored)
+│   ├── .env.local                  (local secrets — gitignored)
 │   ├── next.config.ts
 │   ├── tsconfig.json
+│   ├── test_phase3.js              (Phase 3 automated test suite)
 │   └── package.json
 ├── backend/
 │   ├── src/
@@ -41,7 +59,7 @@ shipment-manager/
 │   │   ├── middleware/
 │   │   │   ├── auth.middleware.js
 │   │   │   ├── error.middleware.js
-│   │   │   └── errorHandler.js (backward compat export)
+│   │   │   └── errorHandler.js
 │   │   ├── routes/
 │   │   │   ├── auth.routes.js
 │   │   │   └── health.js
@@ -54,14 +72,14 @@ shipment-manager/
 │   │   ├── app.js
 │   │   └── server.js
 │   ├── .env.example
-│   ├── .env                   (local secrets — gitignored)
-│   ├── test_auth.js           (automated Phase 2 test suite)
+│   ├── .env                        (local secrets — gitignored)
+│   ├── test_auth.js                (Phase 2 automated test suite)
 │   └── package.json
 ├── database/
 │   ├── migrations/
 │   │   └── 001_create_users_table.sql
 │   └── schema.sql
-├── postman_collection.json    (Postman Phase 2 collection)
+├── postman_collection.json         (Postman collection)
 ├── .gitignore
 └── README.md
 ```
@@ -72,197 +90,108 @@ shipment-manager/
 
 | Layer | Technologies & Tools |
 | :--- | :--- |
-| **Backend Framework** | Node.js, Express.js (JavaScript CommonJS only — no TypeScript) |
-| **Authentication & Tokens** | `jsonwebtoken` (HS256, explicit issuer/audience/expiry claims) |
-| **Password Security** | `bcrypt` (12 salt rounds, never plaintext) |
-| **Validation & Safety** | `joi` schema validation, `express-rate-limit` (brute-force defense) |
-| **Database** | PostgreSQL 14+, Native `pg` Connection Pool (parameterized queries, no ORM) |
-| **Frontend** | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS |
-| **Environment** | macOS, Git, Visual Studio Code |
+| **Frontend UI** | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS |
+| **State & API** | React Context (`AuthContext`), Centralized API Client (`lib/api.ts`) |
+| **Backend API** | Node.js, Express.js (JavaScript CommonJS only — no TypeScript) |
+| **Security & Tokens** | `jsonwebtoken` (HS256 access tokens), `bcrypt` (12 rounds) |
+| **Validation** | Joi (backend schema validation), client-side accessible validation |
+| **Database** | PostgreSQL 14+, Native `pg` Connection Pool (parameterized queries) |
 
 ---
 
-## 4. Getting Started & Setup Guide
+## 4. Frontend Routes & Components
 
-### 4.1 Prerequisites
-Ensure the following tools are installed on your machine:
-* **Node.js** (v18+ or v20+)
-* **npm** (v9+)
-* **PostgreSQL** (running locally on port 5432)
-* **Git**
+### 4.1 Routes
+* **`/login`**:
+  * Fields: Email address, Password.
+  * Show/hide password control.
+  * Inline validation errors for missing or malformed inputs.
+  * Displays success notification when redirected from `/register?registered=true`.
+  * Redirects authenticated users to `/dashboard`.
+  * Links to `/register`.
+* **`/register`**:
+  * Fields: Full name, Email address, Password, Confirm password.
+  * Password visibility controls for both password fields.
+  * Validates: name (2-100 chars), email format, password (min 8 chars), confirm password match.
+  * Handles duplicate registration (HTTP 409) with a clear notification.
+  * On success, navigates to `/login?registered=true`.
+  * Links to `/login`.
+* **`/dashboard`**:
+  * Protected route. Unauthenticated visitors are redirected to `/login`.
+  * Displays verified session details (User Name, Email, UUID) verified via `GET /api/auth/me`.
+  * Contains **Sign Out** button that clears client state and returns to `/login`.
+  * Notifies user that Phase 4 will implement shipment metrics, tracking, and management.
+* **`/`**:
+  * Root redirect: redirects authenticated users to `/dashboard` and guests to `/login`.
 
-### 4.2 Database Setup & Migrations
-1. Create database:
-   ```bash
-   createdb shipment_manager
-   ```
-2. Run initial Phase 1 foundation:
-   ```bash
-   psql -d shipment_manager -f database/schema.sql
-   ```
-3. Run Phase 2 Users migration:
-   ```bash
-   psql -d shipment_manager -f database/migrations/001_create_users_table.sql
-   ```
-
-### 4.3 Backend Configuration
-1. Navigate to `backend/` and install dependencies:
-   ```bash
-   cd backend
-   npm install
-   ```
-
-2. Create `.env` from template:
-   ```bash
-   cp .env.example .env
-   ```
-
-3. Configure environment variables in `backend/.env`:
-   ```env
-   PORT=5000
-   NODE_ENV=development
-   DATABASE_URL=postgresql://YOUR_USER:YOUR_PASSWORD@localhost:5432/shipment_manager
-   FRONTEND_URL=http://localhost:3000
-   JWT_SECRET=your_long_random_64_char_secret_key_here
-   JWT_EXPIRES_IN=15m
-   ```
+### 4.2 Reusable Components
+* **`AuthLayout`**: Logistics branding header with container ship geometry icon, FreightOS title, light surface card, and footer navigation.
+* **`FormInput`**: Accessible input with `<label>`, focus rings (`ring-indigo-500`), assistive helper text, and `aria-invalid` / `aria-describedby` error states.
+* **`PasswordToggle`**: Eye / Eye-slash SVG button with accessible `aria-label`.
+* **`SubmitButton`**: Purple/indigo primary button (`bg-indigo-600 hover:bg-indigo-700`) with loading spinner and disabled state to prevent duplicate submissions.
+* **`Alert`**: Accessible inline notification banners for API error messages and registration success.
 
 ---
 
-## 5. Running the Application
+## 5. Security Architecture & Token Handling
 
-### 5.1 Starting Backend Server
+In this phase, the application maintains a consistent stateless access token strategy:
+1. **API Client Communication**: All requests flow through `frontend/src/lib/api.ts`.
+2. **Bearer Authentication**: Protected endpoints receive the token via `Authorization: Bearer <token>`.
+3. **Session Verification**: `AuthContext` verifies stored tokens with `GET /api/auth/me` on startup. If a token is expired or altered, the state is cleared and the user is redirected to `/login`.
+4. **Security Trade-Off Documentation**:
+   * *Trade-off*: Storing access tokens in client-side memory / session storage makes them accessible to JavaScript. In production, HttpOnly cookies prevent script access, mitigating XSS token extraction.
+   * *Mitigation*: Tokens are short-lived (15-minute expiration) to minimize exposure windows.
+   * *CSRF Defense*: Custom `Authorization: Bearer <token>` headers protect against Cross-Site Request Forgery (CSRF).
+
+---
+
+## 6. How to Run & Test
+
+### 6.1 Running the Servers
 ```bash
+# Terminal 1 — Backend:
 cd backend
-npm run dev   # Development watcher mode with nodemon
-npm start     # Standard production mode
-```
-Server runs on `http://127.0.0.1:5000` (or `http://localhost:5000`).
+npm run dev    # Listening on http://127.0.0.1:5000
 
-> **macOS AirPlay Note**:  
-> macOS AirPlay Receiver occupies port 5000 wildcard by default. The server automatically falls back to binding `127.0.0.1:5000`. You can also disable AirPlay Receiver in **System Settings > General > AirDrop & Handoff > AirPlay Receiver (OFF)** to free `localhost:5000`.
-
-### 5.2 Starting Frontend Server
-```bash
+# Terminal 2 — Frontend:
 cd frontend
-npm run dev   # Runs on http://localhost:3000
+npm run dev    # Listening on http://localhost:3000
 ```
 
----
-
-## 6. Authentication API Specification
-
-### 6.1 `POST /api/auth/register`
-Creates a new user profile with password hashed via bcrypt (work factor 12).
-* **Request Body**:
-  ```json
-  {
-    "name": "Jane Danodia",
-    "email": "jane@danodia.com",
-    "password": "StrongPassword123!"
-  }
-  ```
-* **Success (`201 Created`)**:
-  ```json
-  {
-    "status": "success",
-    "message": "User registered successfully",
-    "data": {
-      "user": {
-        "id": "e6a143d2-36a8-4bb8-9588-4e89bb0dfb2c",
-        "name": "Jane Danodia",
-        "email": "jane@danodia.com",
-        "created_at": "2026-10-12T12:35:00.000Z",
-        "updated_at": "2026-10-12T12:35:00.000Z"
-      }
-    }
-  }
-  ```
-* **Conflict (`409 Conflict`)**: Returned when email already exists.
-* **Validation Failure (`400 Bad Request`)**: Returned when Joi validation fails.
-
-### 6.2 `POST /api/auth/login`
-Authenticates credentials and returns a short-lived signed JWT access token.
-* **Request Body**:
-  ```json
-  {
-    "email": "jane@danodia.com",
-    "password": "StrongPassword123!"
-  }
-  ```
-* **Success (`200 OK`)**:
-  ```json
-  {
-    "status": "success",
-    "message": "Login successful",
-    "data": {
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-      "user": {
-        "id": "e6a143d2-36a8-4bb8-9588-4e89bb0dfb2c",
-        "name": "Jane Danodia",
-        "email": "jane@danodia.com",
-        "created_at": "2026-10-12T12:35:00.000Z",
-        "updated_at": "2026-10-12T12:35:00.000Z"
-      }
-    }
-  }
-  ```
-* **Failure (`401 Unauthorized`)**: Generic `"Invalid email or password"` for incorrect credentials.
-
-### 6.3 `GET /api/auth/me`
-Retrieves authenticated user profile.
-* **Headers**: `Authorization: Bearer <token>`
-* **Success (`200 OK`)**:
-  ```json
-  {
-    "status": "success",
-    "data": {
-      "user": {
-        "id": "e6a143d2-36a8-4bb8-9588-4e89bb0dfb2c",
-        "name": "Jane Danodia",
-        "email": "jane@danodia.com",
-        "created_at": "2026-10-12T12:35:00.000Z",
-        "updated_at": "2026-10-12T12:35:00.000Z"
-      }
-    }
-  }
-  ```
-* **Failure (`401 Unauthorized`)**: Returned when token is missing, invalid, or expired.
-
-### 6.4 `POST /api/auth/logout`
-Stateless token logout confirmation.
-* **Success (`200 OK`)**:
-  ```json
-  {
-    "status": "success",
-    "message": "Logged out successfully. Please discard the client access token."
-  }
-  ```
-
----
-
-## 7. Testing & Verification
-
-### 7.1 Automated Backend Test Suite
-Run the Phase 2 test suite directly:
+### 6.2 Running Automated Tests
 ```bash
+# Backend Test Suite (Phase 2 Auth & Database):
 cd backend
 npm test
-```
-Executes all 10 verification scenarios:
-* Register new user → HTTP 201
-* Register duplicate email → HTTP 409
-* Register invalid payload → HTTP 400
-* Login valid credentials → HTTP 200 + JWT
-* Login invalid credentials → HTTP 401
-* Authenticated profile `/api/auth/me` → HTTP 200
-* Missing token `/api/auth/me` → HTTP 401
-* Tampered token `/api/auth/me` → HTTP 401
-* Database verification: bcrypt hash stored, never plaintext
-* Health check `/api/health` → HTTP 200
 
-### 7.2 Postman Testing
-Import [postman_collection.json](file:///Users/gurnoorsingh/Downloads/ayush/postman_collection.json) directly into Postman.  
-The collection pre-configures:
-* Automatic JWT extraction into collection variable `{{token}}` on login.
-* Ready-to-run test cases for 201, 409, 400, 200, 401, and `/api/auth/me`.
+# Frontend Test Suite (Phase 3 Integration & Routes):
+cd frontend
+npm test
+```
+
+### Phase 3 Test Results:
+```text
+====================================================
+DANODIA FREIGHTOS — PHASE 3 ACCEPTANCE TEST SUITE
+====================================================
+
+[PASS] 1. /login loads successfully with FreightOS branding and sign-in header
+[PASS] 2. /register loads successfully with FreightOS branding and registration header
+[PASS] 3. User registration through backend succeeds with HTTP 201 and normalized email
+[PASS] 4. Duplicate email produces clear HTTP 409 error
+[PASS] 5. Valid login establishes authenticated session and returns JWT token & user profile
+[PASS] 6. Invalid login produces generic HTTP 401 error message without revealing internals
+[PASS] 7. Protected profile verification (/api/auth/me) succeeds with Bearer token
+[PASS] 8. /dashboard route exists and includes FreightOS shell layout
+[PASS] 9. Invalid or tampered token is rejected with HTTP 401
+[PASS] 10. Logout endpoint responds with HTTP 200 success
+[PASS] 11. Root / route is operational and manages authentication redirection
+[PASS] 12. Phase 1 health check endpoint (/api/health) remains 100% operational
+
+====================================================
+PHASE 3 TEST SUMMARY: 12 PASSED, 0 FAILED
+====================================================
+```
+
+Ready for **Phase 4: Shipment Manager Dashboard**!
