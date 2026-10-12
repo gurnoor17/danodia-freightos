@@ -391,12 +391,131 @@ async function deleteShipment(userId, shipmentId) {
   return result.rows.length > 0;
 }
 
+/**
+ * Sanitizes CSV cell values to prevent CSV formula injection
+ * and safely escapes commas, quotes, and newlines.
+ */
+function sanitizeCsvValue(val, isNumeric = false) {
+  if (val === null || val === undefined) return '';
+  let str = String(val);
+
+  // Prevent spreadsheet formula injection for text starting with =, +, -, @, \t, \r
+  if (!isNumeric && /^[\=\+\-\@\t\r]/.test(str)) {
+    str = `'${str}`;
+  }
+
+  // Escape quotes and wrap with double quotes if needed
+  if (str.includes('"') || str.includes(',') || str.includes('\n') || str.includes('\r')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+/**
+ * Generates CSV string of permitted shipments matching filter criteria.
+ */
+async function exportShipmentsCsv(userId, options = {}) {
+  const { search, region, status, sortBy = 'created_at', sortOrder = 'desc' } = options;
+  const whereConditions = ['created_by = $1'];
+  const queryParams = [userId];
+  let paramIndex = 2;
+
+  if (search && search.trim() !== '') {
+    whereConditions.push(`(invoice_no ILIKE $${paramIndex} OR fba_id ILIKE $${paramIndex})`);
+    queryParams.push(`%${search.trim()}%`);
+    paramIndex++;
+  }
+
+  if (region && region.trim() !== '' && region.toLowerCase() !== 'all') {
+    whereConditions.push(`LOWER(region) = LOWER($${paramIndex})`);
+    queryParams.push(region.trim());
+    paramIndex++;
+  }
+
+  if (status && status.trim() !== '' && status !== 'All Statuses') {
+    whereConditions.push(`status = $${paramIndex}`);
+    queryParams.push(status.trim());
+    paramIndex++;
+  }
+
+  const validSortColumns = {
+    created_at: 'created_at',
+    pickup_date: 'pickup_date',
+    sailing_date: 'sailing_date',
+    expected_eta: 'expected_eta',
+    invoice_no: 'invoice_no',
+    total_weight_kg: 'total_weight_kg',
+    volume_cbm: 'volume_cbm',
+    number_of_boxes: 'number_of_boxes',
+  };
+  const safeSort = validSortColumns[sortBy] || 'created_at';
+  const safeOrder = sortOrder.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+
+  const sql = `
+    SELECT *
+    FROM shipments
+    WHERE ${whereConditions.join(' AND ')}
+    ORDER BY ${safeSort} ${safeOrder};
+  `;
+
+  const result = await query(sql, queryParams);
+  const rows = result.rows.map(formatShipmentRow);
+
+  const headers = [
+    'Invoice Number',
+    'Region',
+    'Category',
+    'Assigned Manager',
+    'FBA ID',
+    'Container Number',
+    'Number of Boxes',
+    'Total Weight (kg)',
+    'Volume (CBM)',
+    'Pickup Date',
+    'Sailing Date',
+    'Expected ETA',
+    'Actual Arrival',
+    'Status',
+    'Created At',
+    'Updated At',
+  ];
+
+  const csvRows = [headers.join(',')];
+
+  for (const s of rows) {
+    const rowValues = [
+      sanitizeCsvValue(s.invoice_no),
+      sanitizeCsvValue(s.region),
+      sanitizeCsvValue(s.category || ''),
+      sanitizeCsvValue(s.assigned_manager),
+      sanitizeCsvValue(s.fba_id || ''),
+      sanitizeCsvValue(s.container_no),
+      sanitizeCsvValue(s.number_of_boxes, true),
+      sanitizeCsvValue(s.total_weight_kg, true),
+      sanitizeCsvValue(s.volume_cbm, true),
+      sanitizeCsvValue(s.pickup_date),
+      sanitizeCsvValue(s.sailing_date),
+      sanitizeCsvValue(s.expected_eta),
+      sanitizeCsvValue(s.actual_arrival || ''),
+      sanitizeCsvValue(s.status),
+      sanitizeCsvValue(s.created_at ? new Date(s.created_at).toISOString() : ''),
+      sanitizeCsvValue(s.updated_at ? new Date(s.updated_at).toISOString() : ''),
+    ];
+    csvRows.push(rowValues.join(','));
+  }
+
+  return csvRows.join('\r\n');
+}
+
 module.exports = {
   deriveStatus,
+  formatShipmentRow,
   createShipment,
   getShipments,
   getShipmentSummary,
   getShipmentById,
   updateShipment,
   deleteShipment,
+  exportShipmentsCsv,
+  sanitizeCsvValue,
 };

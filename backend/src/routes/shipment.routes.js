@@ -21,6 +21,9 @@ router.get('/', shipmentController.list);
 // Create shipment
 router.post('/', validateBody(createShipmentSchema), shipmentController.create);
 
+// Export filtered shipments as CSV
+router.get('/export', shipmentController.exportCsv);
+
 // Get shipment by ID
 router.get('/:id', shipmentController.getById);
 

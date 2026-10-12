@@ -141,6 +141,21 @@ async function remove(req, res, next) {
   }
 }
 
+/**
+ * Controller for exporting filtered shipments as CSV.
+ */
+async function exportCsv(req, res, next) {
+  try {
+    const csvContent = await shipmentService.exportShipmentsCsv(req.user.id, req.query);
+    const dateStr = new Date().toISOString().split('T')[0];
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="Danodia_Shipments_${dateStr}.csv"`);
+    return res.status(200).send(csvContent);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   create,
   list,
@@ -148,4 +163,5 @@ module.exports = {
   getById,
   update,
   remove,
+  exportCsv,
 };

@@ -16,6 +16,10 @@ import {
   getShipments,
   getShipmentSummary,
   deleteShipment,
+  downloadShipmentsCsv,
+  getWatchlistIds,
+  addToWatchlist,
+  removeFromWatchlist,
   ApiError,
 } from '@/lib/api';
 
@@ -52,6 +56,13 @@ export default function DashboardPage() {
     totalVolumeCbm: 0,
   });
 
+  // Watchlist State
+  const [watchlistedIds, setWatchlistedIds] = useState<string[]>([]);
+  const [isTogglingWatchlistId, setIsTogglingWatchlistId] = useState<string | null>(null);
+
+  // Export State
+  const [isExporting, setIsExporting] = useState(false);
+
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [dataError, setDataError] = useState<string | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
@@ -83,6 +94,17 @@ export default function DashboardPage() {
       setSummaryData(summary);
     } catch (err) {
       console.error('Failed to load shipment summary:', err);
+    }
+  }, [token]);
+
+  // Fetch Watchlist Saved IDs
+  const fetchWatchlistIds = useCallback(async () => {
+    if (!token) return;
+    try {
+      const ids = await getWatchlistIds(token);
+      setWatchlistedIds(ids);
+    } catch (err) {
+      console.error('Failed to load watchlist IDs:', err);
     }
   }, [token]);
 
@@ -118,8 +140,9 @@ export default function DashboardPage() {
     if (isAuthenticated && token) {
       fetchSummary();
       fetchShipmentList();
+      fetchWatchlistIds();
     }
-  }, [isAuthenticated, token, fetchSummary, fetchShipmentList]);
+  }, [isAuthenticated, token, fetchSummary, fetchShipmentList, fetchWatchlistIds]);
 
   // Convert summary response into ordered array for the 5 summary cards
   const originSummariesList: OriginSummaryData[] = useMemo(() => {
@@ -185,14 +208,50 @@ export default function DashboardPage() {
     setSelectedOrigin(originId);
   };
 
-  const handleExportCsv = () => {
-    alert('Export CSV will be implemented in a subsequent reporting module.');
+  const handleExportCsv = async () => {
+    if (!token) return;
+    setIsExporting(true);
+    try {
+      await downloadShipmentsCsv(token, {
+        search: searchQuery,
+        region: selectedOrigin !== 'all' ? selectedOrigin : undefined,
+        status: statusFilter !== 'All Statuses' ? statusFilter : undefined,
+      });
+      setSuccessToast('Shipments CSV downloaded successfully.');
+    } catch (err: unknown) {
+      const msg = err instanceof ApiError ? err.message : 'Failed to export CSV.';
+      alert(msg);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleToggleWatchlist = async (shipment: ShipmentRecord) => {
+    if (!token) return;
+    const isSaved = watchlistedIds.includes(shipment.id);
+    setIsTogglingWatchlistId(shipment.id);
+    try {
+      if (isSaved) {
+        await removeFromWatchlist(token, shipment.id);
+        setWatchlistedIds((prev) => prev.filter((id) => id !== shipment.id));
+        setSuccessToast(`Removed ${shipment.invoice_no} from Watchlist`);
+      } else {
+        await addToWatchlist(token, shipment.id);
+        setWatchlistedIds((prev) => [...prev, shipment.id]);
+        setSuccessToast(`Saved ${shipment.invoice_no} to Watchlist`);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof ApiError ? err.message : 'Failed to update watchlist.';
+      alert(msg);
+    } finally {
+      setIsTogglingWatchlistId(null);
+    }
   };
 
   return (
     <div className="min-h-screen bg-[#F7F9FC] text-[#0B1020] flex relative">
       {/* Top subtle verification/loading bar */}
-      {(isLoading || isLoadingData) && (
+      {(isLoading || isLoadingData || isExporting) && (
         <div className="absolute top-0 inset-x-0 h-1 bg-indigo-100 overflow-hidden z-50">
           <div className="h-full bg-[#503BFF] animate-pulse w-full"></div>
         </div>
@@ -221,7 +280,7 @@ export default function DashboardPage() {
         onOpenCreateModal={handleOpenCreateModal}
         activeItem="dashboard"
         shipmentCount={summaryData.all.shipmentCount}
-        watchlistCount={0}
+        watchlistCount={watchlistedIds.length}
       />
 
       {/* 2. Main Content Viewport */}
@@ -232,6 +291,7 @@ export default function DashboardPage() {
           <DashboardHeader
             onToggleSidebar={() => setIsSidebarOpen(true)}
             onExportCsv={handleExportCsv}
+            isExporting={isExporting}
           />
 
           {/* B. Five Summary Cards Grid (Real PostgreSQL Aggregates) */}
@@ -267,6 +327,7 @@ export default function DashboardPage() {
                 onClick={() => {
                   fetchSummary();
                   fetchShipmentList();
+                  fetchWatchlistIds();
                 }}
                 className="underline font-bold hover:text-rose-900"
               >
@@ -284,6 +345,9 @@ export default function DashboardPage() {
               onEditShipment={handleEditShipment}
               onDeleteShipment={handlePromptDelete}
               isDeletingId={isDeletingId}
+              watchlistedIds={watchlistedIds}
+              onToggleWatchlist={handleToggleWatchlist}
+              isTogglingWatchlistId={isTogglingWatchlistId}
             />
           </section>
         </main>

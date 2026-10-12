@@ -323,4 +323,172 @@ DANODIA FREIGHTOS — PHASE 5 COMPLETE CRUD TEST SUITE
 TOTAL E2E TESTS: 16 PASSED, 0 FAILED
 ```
 
+---
+
+## 9. Phase 6: Shipment Manager — Export, Watchlist and Analytics
+
+Phase 6 completes the Danodia FreightOS dashboard with high-performance CSV Export, user-isolated Saved Watchlist, and data-driven Logistics Analytics.
+
+### 9.1 Database Migration & Schema
+* **Migration File**: [`database/migrations/003_create_watchlist_table.sql`](file:///Users/gurnoorsingh/Downloads/ayush/database/migrations/003_create_watchlist_table.sql)
+* **Table**: `watchlist`
+  * `id`: UUID Primary Key (`gen_random_uuid()`)
+  * `user_id`: UUID Foreign Key referencing `users(id) ON DELETE CASCADE`
+  * `shipment_id`: UUID Foreign Key referencing `shipments(id) ON DELETE CASCADE`
+  * `created_at`: TIMESTAMPTZ default `NOW()`
+  * **Constraints**: `UNIQUE (user_id, shipment_id)` ensuring idempotent saves without duplicates
+  * **Cascade Rule**: Deleting a shipment automatically cleans up any watchlist references without orphaned records
+* **Indexes**:
+  * `idx_watchlist_user_id` on `watchlist(user_id)`
+  * `idx_watchlist_shipment_id` on `watchlist(shipment_id)`
+  * `idx_watchlist_user_shipment` on `watchlist(user_id, shipment_id)`
+
+### 9.2 CSV Export (`GET /api/shipments/export`)
+* **Endpoint**: `GET /api/shipments/export`
+* **Query Parameters**: Respects current search query (`search`), origin region filter (`region`), and status filter (`status`).
+* **Authentication**: Enforces JWT verification and user isolation (`created_by = req.user.id`).
+* **Content Headers**: Returns `Content-Type: text/csv; charset=utf-8` and `Content-Disposition: attachment; filename="Danodia_Shipments_YYYY-MM-DD.csv"`.
+* **Spreadsheet Formula Injection Defense**: Text values beginning with dangerous formula characters (`=`, `+`, `-`, `@`, `\t`, `\r`) are sanitized with single-quote escaping (`'`). Legitimate numeric columns (`number_of_boxes`, `total_weight_kg`, `volume_cbm`) are strictly preserved.
+* **Streamlined Memory Footprint**: Parameterized SQL queries stream without buffering redundant unpermitted rows. Empty results return a valid header-only CSV.
+
+### 9.3 Saved Watchlist (`/api/watchlist` & `/watchlist`)
+* **API Endpoints**:
+  * `GET /api/watchlist`: Returns all saved watchlist items for the authenticated user with embedded shipment details.
+  * `GET /api/watchlist/ids`: Fast array lookup of saved shipment IDs for real-time table bookmark indicators.
+  * `POST /api/watchlist/:shipmentId`: Saves a shipment to the user's watchlist (`ON CONFLICT DO NOTHING` for graceful duplicate handling). Verifies shipment ownership (HTTP 404 for inaccessible shipments).
+  * `DELETE /api/watchlist/:shipmentId`: Removes a shipment from the user's watchlist.
+* **Frontend (`/watchlist`)**:
+  * Displays saved shipment count badge in header and live badge in the sidebar.
+  * Interactive table displaying Invoice & FBA, Origin / Container, Manager, Expected ETA, Status badge, and Actions.
+  * "View Details" action opens a comprehensive modal drawer with all dates, cargo metrics, and consignment fields.
+  * "Remove from Watchlist" action with optimistic toast updates.
+  * Responsive empty state with quick link to explore dashboard shipments.
+
+### 9.4 Logistics Analytics (`/api/analytics` & `/analytics`)
+* **Endpoint**: `GET /api/analytics`
+* **SQL Aggregation**: Calculates analytics directly inside PostgreSQL without loading unaggregated rows into Node.js memory.
+* **7 Core KPI Metrics**:
+  1. **Total Shipments**: Count of managed consignments.
+  2. **Total Boxes**: Sum of all packaged box units.
+  3. **Cargo Weight**: Total weight in kilograms (kg).
+  4. **Total Volume**: Total cubic meter volume (CBM).
+  5. **Arrived Shipments**: Shipments where `actual_arrival IS NOT NULL`.
+  6. **Pending Shipments**: Shipments where `actual_arrival IS NULL AND expected_eta >= CURRENT_DATE`.
+  7. **Delayed Shipments**: Shipments where `actual_arrival IS NULL AND expected_eta < CURRENT_DATE`.
+* **Visualizations**:
+  * **Shipments by Origin Region**: Horizontal bar chart comparing shipment counts, volume, and percentage breakdown across global shipping corridors.
+  * **Shipments by Status**: Operational status breakdown for In Transit, Delivered, Booked, Pending Customs, and Cancelled.
+  * **Logistics Volume Trend Over Time**: Monthly timeline bar chart plotting CBM cargo volume and frequency across pickup schedules.
+* **Zero-Record Resilience**: Safely returns zeroed metrics and empty arrays when a user has no shipments.
+
+### 9.5 Test Suite Verification Results
+
+#### Backend Test Suite (`npm test` in `backend/`):
+```text
+====================================================
+DANODIA FREIGHTOS — PHASE 2 AUTHENTICATION TEST SUITE
+====================================================
+[PASS] 13/13 Authentication & Security Tests Passed
+
+====================================================
+DANODIA FREIGHTOS — PHASE 5 SHIPMENT CRUD TEST SUITE
+====================================================
+[PASS] 15/15 Shipment CRUD Tests Passed
+
+================================================================
+🚀 RUNNING PHASE 6 ACCEPTANCE & INTEGRATION TEST SUITE
+================================================================
+📌 1. User Setup & Auth Isolation
+  ✓ User A registered successfully
+  ✓ User A logged in
+  ✓ User B registered successfully
+  ✓ User B logged in
+📌 2. Seeding Test Shipments (Formula injection, Comma escaping, Dates)
+  ✓ Created Shipment 1 (USA, Pending)
+  ✓ Created Shipment 2 (UK, Arrived, Formula Characters)
+  ✓ Created Shipment 3 (Germany, Delayed, Cancelled)
+📌 3. Testing CSV Export Endpoint
+  ✓ Export CSV without token returns 401 Unauthorized
+  ✓ Export all returned 200 OK
+  ✓ Content-Type is text/csv
+  ✓ Content-Disposition has valid filename
+  ✓ CSV includes standard headers
+  ✓ CSV contains Shipment 1 invoice
+  ✓ CSV contains Shipment 2 invoice
+  ✓ CSV contains Shipment 3 invoice
+  ✓ Formula starting with = is sanitized with single quote
+  ✓ Formula starting with @ is sanitized with single quote
+  ✓ Legitimate numeric columns are preserved without single quote prefix
+  ✓ Filtered export returned 200 OK
+  ✓ Filtered export contains USA shipment
+  ✓ Filtered export excludes UK shipment
+  ✓ Filtered export excludes Germany shipment
+  ✓ Empty filter export returned 200 OK
+  ✓ Empty filter export contains header row
+  ✓ Empty filter export contains exactly 1 row (header only)
+📌 4. Testing Saved Watchlist
+  ✓ Watchlist without token returns 401 Unauthorized
+  ✓ Saved Shipment 1 to watchlist (201 Created)
+  ✓ Duplicate save handled gracefully (idempotent)
+  ✓ Saved Shipment 2 to watchlist
+  ✓ Retrieved watchlist items
+  ✓ Watchlist contains 2 saved items
+  ✓ Watchlist item includes embedded shipment record
+  ✓ Retrieved watchlist IDs
+  ✓ Watchlist IDs contains both shp1 and shp2
+  ✓ User B watchlist request succeeds
+  ✓ User B watchlist is completely empty (isolated)
+  ✓ User B cannot save User A shipment (returns 404 Not Found)
+  ✓ Removed Shipment 1 from watchlist
+  ✓ Shipment 1 is no longer in watchlist IDs
+  ✓ Shipment 2 remains in watchlist
+  ✓ Deleted Shipment 2 from shipments
+  ✓ Watchlist entry was automatically cascade deleted when shipment was deleted
+📌 5. Testing Analytics Aggregation
+  ✓ Analytics without token returns 401 Unauthorized
+  ✓ Retrieved User A Analytics
+  ✓ Total shipments is 2 (got 2)
+  ✓ Total boxes is 70 (got 70)
+  ✓ Total weight is 1400.5 kg (got 1400.5)
+  ✓ Total volume is 14.5 CBM (got 14.5)
+  ✓ Arrived shipments is 0 (got 0)
+  ✓ Pending shipments is 1 (got 1)
+  ✓ Delayed shipments is 1 (got 1)
+  ✓ by_region contains 2 regions (USA & Germany)
+  ✓ USA region count is 1
+  ✓ by_status contains 2 statuses
+  ✓ timeline contains monthly series data
+  ✓ User B Analytics returns 200 OK with zero shipments
+  ✓ User B total_shipments is 0
+  ✓ User B total_boxes is 0
+  ✓ User B total_weight_kg is 0
+  ✓ User B total_volume_cbm is 0
+  ✓ User B arrived_shipments is 0
+  ✓ User B pending_shipments is 0
+  ✓ User B delayed_shipments is 0
+  ✓ User B by_region is empty array
+  ✓ User B by_status is empty array
+  ✓ User B timeline is empty array
+
+TOTAL BACKEND TESTS: 58 PASSED, 0 FAILED
+```
+
+#### Frontend Test Suite (`npm test` in `frontend/`):
+```text
+====================================================
+DANODIA FREIGHTOS — PHASE 3 ACCEPTANCE TEST SUITE
+====================================================
+[PASS] 12/12 Auth UI & Redirect Tests Passed
+
+====================================================
+DANODIA FREIGHTOS — PHASE 6 FRONTEND ACCEPTANCE TESTS
+====================================================
+[PASS] 1. /dashboard renders Global Shipments and Export CSV button
+[PASS] 2. /watchlist route renders Saved Watchlist heading and FreightOS layout
+[PASS] 3. /analytics route renders Logistics Analytics heading and KPI metrics
+[PASS] 4. Sidebar navigation includes valid links to /dashboard, /analytics, and /watchlist
+
+TOTAL FRONTEND TESTS: 16 PASSED, 0 FAILED
+```
+
 

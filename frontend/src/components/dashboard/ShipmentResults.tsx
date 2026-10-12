@@ -14,6 +14,9 @@ interface ShipmentResultsProps {
   onEditShipment?: (shipment: ShipmentRecord) => void;
   onDeleteShipment?: (shipment: ShipmentRecord) => void;
   isDeletingId?: string | null;
+  watchlistedIds?: string[];
+  onToggleWatchlist?: (shipment: ShipmentRecord) => void;
+  isTogglingWatchlistId?: string | null;
 }
 
 export function ShipmentResults({
@@ -23,6 +26,9 @@ export function ShipmentResults({
   onEditShipment,
   onDeleteShipment,
   isDeletingId,
+  watchlistedIds = [],
+  onToggleWatchlist,
+  isTogglingWatchlistId,
 }: ShipmentResultsProps) {
   // Aggregate metrics from prop or local calculation
   const totalBoxes = summaryTotals
@@ -191,9 +197,38 @@ export function ShipmentResults({
                     </span>
                   </td>
 
-                  {/* Actions (Edit & Delete) */}
+                  {/* Actions (Watchlist, Edit & Delete) */}
                   <td className="py-3.5 px-4 text-right">
                     <div className="inline-flex items-center gap-1.5">
+                      {onToggleWatchlist && (
+                        <button
+                          type="button"
+                          onClick={() => onToggleWatchlist(shipment)}
+                          disabled={isTogglingWatchlistId === shipment.id}
+                          title={watchlistedIds.includes(shipment.id) ? 'Remove from Watchlist' : 'Save to Watchlist'}
+                          className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                            watchlistedIds.includes(shipment.id)
+                              ? 'text-amber-500 hover:text-amber-600 hover:bg-amber-50'
+                              : 'text-slate-400 hover:text-amber-500 hover:bg-slate-100'
+                          }`}
+                        >
+                          {isTogglingWatchlistId === shipment.id ? (
+                            <svg className="animate-spin w-4 h-4 text-amber-500" viewBox="0 0 24 24" fill="none">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                          ) : watchlistedIds.includes(shipment.id) ? (
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                            </svg>
+                          ) : (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                            </svg>
+                          )}
+                        </button>
+                      )}
+
                       {onEditShipment && (
                         <button
                           type="button"

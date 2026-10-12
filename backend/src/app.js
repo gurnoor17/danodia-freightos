@@ -3,6 +3,8 @@ const cors = require('cors');
 const healthRoutes = require('./routes/health');
 const authRoutes = require('./routes/auth.routes');
 const shipmentRoutes = require('./routes/shipment.routes');
+const watchlistRoutes = require('./routes/watchlist.routes');
+const analyticsRoutes = require('./routes/analytics.routes');
 const errorMiddleware = require('./middleware/error.middleware');
 
 const app = express();
@@ -26,6 +28,8 @@ app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/shipments', shipmentRoutes);
+app.use('/api/watchlist', watchlistRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // Root informational route
 app.get('/', (req, res) => {

@@ -1,12 +1,13 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  onOpenCreateModal: () => void;
+  onOpenCreateModal?: () => void;
   activeItem?: 'dashboard' | 'analytics' | 'watchlist';
   shipmentCount?: number;
   watchlistCount?: number;
@@ -44,8 +45,8 @@ export function Sidebar({
           
           {/* Brand Header */}
           <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-[#503BFF] text-white flex items-center justify-center shadow-md shadow-[#503BFF]/30">
+            <Link href="/dashboard" className="flex items-center gap-3 group">
+              <div className="w-9 h-9 rounded-lg bg-[#503BFF] text-white flex items-center justify-center shadow-md shadow-[#503BFF]/30 group-hover:scale-105 transition-transform">
                 {/* Freight Container Ship Logo */}
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -64,7 +65,7 @@ export function Sidebar({
                   Global Logistics
                 </span>
               </div>
-            </div>
+            </Link>
 
             {/* Mobile Close Button */}
             <button
@@ -98,30 +99,43 @@ export function Sidebar({
 
           {/* Primary Action: + Create Shipment */}
           <div>
-            <button
-              type="button"
-              onClick={onOpenCreateModal}
-              className="w-full flex items-center justify-center gap-2 bg-[#503BFF] hover:bg-[#432fe0] active:bg-[#3826c7] text-white font-semibold text-sm py-2.5 px-4 rounded-xl shadow-md shadow-[#503BFF]/25 transition-all duration-150 cursor-pointer"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-              </svg>
-              <span>+ Create Shipment</span>
-            </button>
+            {onOpenCreateModal ? (
+              <button
+                type="button"
+                onClick={onOpenCreateModal}
+                className="w-full flex items-center justify-center gap-2 bg-[#503BFF] hover:bg-[#432fe0] active:bg-[#3826c7] text-white font-semibold text-sm py-2.5 px-4 rounded-xl shadow-md shadow-[#503BFF]/25 transition-all duration-150 cursor-pointer"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                </svg>
+                <span>+ Create Shipment</span>
+              </button>
+            ) : (
+              <Link
+                href="/dashboard?create=true"
+                className="w-full flex items-center justify-center gap-2 bg-[#503BFF] hover:bg-[#432fe0] active:bg-[#3826c7] text-white font-semibold text-sm py-2.5 px-4 rounded-xl shadow-md shadow-[#503BFF]/25 transition-all duration-150 cursor-pointer"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                </svg>
+                <span>+ Create Shipment</span>
+              </Link>
+            )}
           </div>
 
           {/* Navigation Links */}
           <nav className="space-y-1.5 pt-1">
             {/* Dashboard Navigation Item */}
-            <div
+            <Link
+              href="/dashboard"
               className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
                 activeItem === 'dashboard'
-                  ? 'bg-[#182240] text-white border-l-3 border-[#503BFF]'
+                  ? 'bg-[#182240] text-white border-l-4 border-[#503BFF]'
                   : 'text-slate-400 hover:text-white hover:bg-[#12192E]'
               }`}
             >
               <div className="flex items-center gap-3">
-                <svg className="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className={`w-4 h-4 ${activeItem === 'dashboard' ? 'text-indigo-400' : 'text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -134,15 +148,19 @@ export function Sidebar({
               <span className="text-xs px-2 py-0.5 rounded-full bg-[#202D52] text-slate-300 font-mono">
                 {shipmentCount}
               </span>
-            </div>
+            </Link>
 
             {/* Analytics Navigation Item */}
-            <div
-              className="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-white hover:bg-[#12192E] transition-colors cursor-pointer"
-              title="Analytics (Phase 5+)"
+            <Link
+              href="/analytics"
+              className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
+                activeItem === 'analytics'
+                  ? 'bg-[#182240] text-white border-l-4 border-[#503BFF]'
+                  : 'text-slate-400 hover:text-white hover:bg-[#12192E]'
+              }`}
             >
               <div className="flex items-center gap-3">
-                <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className={`w-4 h-4 ${activeItem === 'analytics' ? 'text-indigo-400' : 'text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -152,16 +170,19 @@ export function Sidebar({
                 </svg>
                 <span>Analytics</span>
               </div>
-              <span className="text-[10px] text-slate-500 uppercase font-semibold">Soon</span>
-            </div>
+            </Link>
 
             {/* Saved Watchlist Navigation Item */}
-            <div
-              className="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-white hover:bg-[#12192E] transition-colors cursor-pointer"
-              title="Saved Watchlist (Phase 5+)"
+            <Link
+              href="/watchlist"
+              className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
+                activeItem === 'watchlist'
+                  ? 'bg-[#182240] text-white border-l-4 border-[#503BFF]'
+                  : 'text-slate-400 hover:text-white hover:bg-[#12192E]'
+              }`}
             >
               <div className="flex items-center gap-3">
-                <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className={`w-4 h-4 ${activeItem === 'watchlist' ? 'text-amber-400' : 'text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -171,10 +192,12 @@ export function Sidebar({
                 </svg>
                 <span>Saved Watchlist</span>
               </div>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-[#182038] text-slate-400 font-mono">
+              <span className={`text-xs px-2 py-0.5 rounded-full font-mono ${
+                watchlistCount > 0 ? 'bg-amber-500/20 text-amber-300 font-semibold' : 'bg-[#182038] text-slate-400'
+              }`}>
                 {watchlistCount}
               </span>
-            </div>
+            </Link>
           </nav>
         </div>
 

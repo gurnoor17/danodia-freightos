@@ -482,6 +482,135 @@
           "path": ["shipments", "{{shipmentId}}"]
         }
       }
+    },
+    {
+      "name": "19. Export Shipments to CSV (All Permitted)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/shipments/export",
+          "host": ["{{baseUrl}}"],
+          "path": ["shipments", "export"]
+        }
+      }
+    },
+    {
+      "name": "20. Export Filtered Shipments to CSV",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/shipments/export?region=USA&status=In%20Transit",
+          "host": ["{{baseUrl}}"],
+          "path": ["shipments", "export"],
+          "query": [
+            {
+              "key": "region",
+              "value": "USA"
+            },
+            {
+              "key": "status",
+              "value": "In Transit"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "21. Get Watchlist Items",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/watchlist",
+          "host": ["{{baseUrl}}"],
+          "path": ["watchlist"]
+        }
+      }
+    },
+    {
+      "name": "22. Get Watchlist IDs",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/watchlist/ids",
+          "host": ["{{baseUrl}}"],
+          "path": ["watchlist", "ids"]
+        }
+      }
+    },
+    {
+      "name": "23. Save Shipment to Watchlist",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/watchlist/{{shipmentId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["watchlist", "{{shipmentId}}"]
+        }
+      }
+    },
+    {
+      "name": "24. Remove Shipment from Watchlist",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/watchlist/{{shipmentId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["watchlist", "{{shipmentId}}"]
+        }
+      }
+    },
+    {
+      "name": "25. Get Analytics Aggregates & Charts Data",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/analytics",
+          "host": ["{{baseUrl}}"],
+          "path": ["analytics"]
+        }
+      }
     }
   ]
 }

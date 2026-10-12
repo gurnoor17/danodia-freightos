@@ -461,3 +461,231 @@ export async function deleteShipment(token: string, id: string): Promise<void> {
   }
 }
 
+// ============================================================================
+// Phase 6: CSV Export, Watchlist, and Analytics API Client
+// ============================================================================
+
+/**
+ * Downloads shipments CSV file respecting the active search and filters.
+ * GET /api/shipments/export
+ */
+export async function downloadShipmentsCsv(
+  token: string,
+  params: ShipmentQueryParams = {}
+): Promise<void> {
+  const query = new URLSearchParams();
+  if (params.search) query.set('search', params.search);
+  if (params.region && params.region !== 'all') query.set('region', params.region);
+  if (params.status && params.status !== 'All Statuses') query.set('status', params.status);
+
+  const qs = query.toString();
+  const endpoint = `/shipments/export${qs ? `?${qs}` : ''}`;
+
+  let response: Response;
+  try {
+    response = await fetchWithFallback(endpoint, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (err) {
+    throw new ApiError('Network error while exporting CSV.', 0);
+  }
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    throw new ApiError(errorData?.message || 'Failed to export CSV', response.status);
+  }
+
+  // Extract filename from Content-Disposition if present
+  let filename = `Danodia_Shipments_${new Date().toISOString().split('T')[0]}.csv`;
+  const disposition = response.headers.get('Content-Disposition');
+  if (disposition && disposition.includes('filename=')) {
+    const match = disposition.match(/filename="?([^";]+)"?/);
+    if (match && match[1]) {
+      filename = match[1];
+    }
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  window.URL.revokeObjectURL(url);
+}
+
+// --- Watchlist Interfaces & API ---
+
+export interface WatchlistItem {
+  id: string;
+  user_id: string;
+  shipment_id: string;
+  created_at: string;
+  shipment: ShipmentRecord;
+}
+
+/**
+ * Retrieve saved watchlist items with shipment details
+ * GET /api/watchlist
+ */
+export async function getWatchlist(token: string): Promise<WatchlistItem[]> {
+  let response: Response;
+  try {
+    response = await fetchWithFallback('/watchlist', {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (err) {
+    throw new ApiError('Network error while fetching watchlist.', 0);
+  }
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new ApiError(data?.message || 'Failed to fetch watchlist', response.status);
+  }
+  return data.data.watchlist;
+}
+
+/**
+ * Retrieve saved shipment IDs for fast bookmark indicators
+ * GET /api/watchlist/ids
+ */
+export async function getWatchlistIds(token: string): Promise<string[]> {
+  let response: Response;
+  try {
+    response = await fetchWithFallback('/watchlist/ids', {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (err) {
+    throw new ApiError('Network error while fetching watchlist IDs.', 0);
+  }
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new ApiError(data?.message || 'Failed to fetch watchlist IDs', response.status);
+  }
+  return data.data.shipmentIds;
+}
+
+/**
+ * Add a shipment to the user's saved watchlist
+ * POST /api/watchlist/:shipmentId
+ */
+export async function addToWatchlist(token: string, shipmentId: string): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetchWithFallback(`/watchlist/${shipmentId}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (err) {
+    throw new ApiError('Network error while saving to watchlist.', 0);
+  }
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new ApiError(data?.message || 'Failed to save to watchlist', response.status);
+  }
+}
+
+/**
+ * Remove a shipment from the user's saved watchlist
+ * DELETE /api/watchlist/:shipmentId
+ */
+export async function removeFromWatchlist(token: string, shipmentId: string): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetchWithFallback(`/watchlist/${shipmentId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (err) {
+    throw new ApiError('Network error while removing from watchlist.', 0);
+  }
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new ApiError(data?.message || 'Failed to remove from watchlist', response.status);
+  }
+}
+
+// --- Analytics Interfaces & API ---
+
+export interface AnalyticsSummary {
+  total_shipments?: number;
+  totalShipments?: number;
+  total_boxes?: number;
+  totalBoxes?: number;
+  total_weight_kg?: number;
+  totalWeightKg?: number;
+  total_volume_cbm?: number;
+  totalVolumeCbm?: number;
+  arrived_shipments?: number;
+  arrivedShipments?: number;
+  pending_shipments?: number;
+  pendingShipments?: number;
+  delayed_shipments?: number;
+  delayedShipments?: number;
+}
+
+export interface RegionMetric {
+  region: string;
+  count: number;
+  boxes?: number;
+  weight_kg?: number;
+  weightKg?: number;
+  volume_cbm?: number;
+  volumeCbm?: number;
+  percentage?: number;
+}
+
+export interface StatusMetric {
+  status: string;
+  count: number;
+  percentage?: number;
+}
+
+export interface TimelineMetric {
+  month: string;
+  count: number;
+  volume_cbm?: number;
+  volumeCbm?: number;
+  weight_kg?: number;
+  weightKg?: number;
+}
+
+export interface AnalyticsResponse {
+  summary: AnalyticsSummary;
+  by_region?: RegionMetric[];
+  byRegion?: RegionMetric[];
+  by_status?: StatusMetric[];
+  byStatus?: StatusMetric[];
+  timeline: TimelineMetric[];
+}
+
+/**
+ * Retrieve comprehensive aggregated logistics analytics
+ * GET /api/analytics
+ */
+export async function getAnalytics(token: string): Promise<AnalyticsResponse> {
+  let response: Response;
+  try {
+    response = await fetchWithFallback('/analytics', {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (err) {
+    throw new ApiError('Network error while fetching analytics.', 0);
+  }
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new ApiError(data?.message || 'Failed to fetch analytics', response.status);
+  }
+  return data.data;
+}
+
