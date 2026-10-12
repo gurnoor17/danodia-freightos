@@ -1,6 +1,6 @@
 # Shipment Manager (Danodia FreightOS)
 
-> **Phase 1: Project Initialization & Foundational Architecture**  
+> **Phase 2: Backend Authentication System**  
 > Enterprise Global Logistics & Shipment Management Platform
 
 ---
@@ -9,12 +9,8 @@
 
 **Shipment Manager (Danodia FreightOS)** is an enterprise web application designed to manage global shipments, cargo metrics, logistics dates, and shipment tracking across international supply chains.
 
-Phase 1 establishes the foundational full-stack architecture:
-* Modern Next.js frontend with App Router, TypeScript, and Tailwind CSS.
-* Lightweight, performant Node.js/Express.js backend written in clean JavaScript.
-* Direct PostgreSQL database integration using the native `pg` connection pool (no ORM overhead).
-* Health check endpoint verifying both API runtime and live database connectivity.
-* Environment configuration management and security practices.
+* **Phase 1**: Established foundational full-stack architecture, Next.js frontend, Express backend, PostgreSQL connection pool, and health check endpoint.
+* **Phase 2**: Implemented a robust, secure **Backend Authentication System** featuring password hashing (bcrypt, salt rounds 12), stateless JWT access tokens, Joi input validation, rate limiting, and user profile management in PostgreSQL.
 
 ---
 
@@ -27,11 +23,12 @@ shipment-manager/
 │   │   └── .gitkeep
 │   ├── src/
 │   │   └── app/
+│   │       ├── favicon.ico
+│   │       ├── globals.css
 │   │       ├── layout.tsx
-│   │       ├── page.tsx
-│   │       └── globals.css
+│   │       └── page.tsx
 │   ├── .env.local.example
-│   ├── .env.local             (gitignored)
+│   ├── .env.local             (local secrets — gitignored)
 │   ├── next.config.ts
 │   ├── tsconfig.json
 │   └── package.json
@@ -40,23 +37,31 @@ shipment-manager/
 │   │   ├── config/
 │   │   │   └── database.js
 │   │   ├── controllers/
-│   │   │   └── .gitkeep
-│   │   ├── routes/
-│   │   │   ├── health.js
-│   │   │   └── .gitkeep
+│   │   │   └── auth.controller.js
 │   │   ├── middleware/
-│   │   │   └── errorHandler.js
+│   │   │   ├── auth.middleware.js
+│   │   │   ├── error.middleware.js
+│   │   │   └── errorHandler.js (backward compat export)
+│   │   ├── routes/
+│   │   │   ├── auth.routes.js
+│   │   │   └── health.js
 │   │   ├── services/
-│   │   │   └── .gitkeep
+│   │   │   └── auth.service.js
 │   │   ├── utils/
-│   │   │   └── .gitkeep
+│   │   │   └── jwt.js
+│   │   ├── validators/
+│   │   │   └── auth.validator.js
 │   │   ├── app.js
 │   │   └── server.js
 │   ├── .env.example
-│   ├── .env                   (gitignored)
+│   ├── .env                   (local secrets — gitignored)
+│   ├── test_auth.js           (automated Phase 2 test suite)
 │   └── package.json
 ├── database/
+│   ├── migrations/
+│   │   └── 001_create_users_table.sql
 │   └── schema.sql
+├── postman_collection.json    (Postman Phase 2 collection)
 ├── .gitignore
 └── README.md
 ```
@@ -67,9 +72,12 @@ shipment-manager/
 
 | Layer | Technologies & Tools |
 | :--- | :--- |
-| **Frontend** | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS, npm |
-| **Backend** | Node.js, Express.js (JavaScript), CORS, Dotenv, Nodemon |
-| **Database** | PostgreSQL 14+, Native `pg` Connection Pool (no ORM) |
+| **Backend Framework** | Node.js, Express.js (JavaScript CommonJS only — no TypeScript) |
+| **Authentication & Tokens** | `jsonwebtoken` (HS256, explicit issuer/audience/expiry claims) |
+| **Password Security** | `bcrypt` (12 salt rounds, never plaintext) |
+| **Validation & Safety** | `joi` schema validation, `express-rate-limit` (brute-force defense) |
+| **Database** | PostgreSQL 14+, Native `pg` Connection Pool (parameterized queries, no ORM) |
+| **Frontend** | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS |
 | **Environment** | macOS, Git, Visual Studio Code |
 
 ---
@@ -83,150 +91,178 @@ Ensure the following tools are installed on your machine:
 * **PostgreSQL** (running locally on port 5432)
 * **Git**
 
-### 4.2 Database Setup
-1. Create the database:
+### 4.2 Database Setup & Migrations
+1. Create database:
    ```bash
    createdb shipment_manager
    ```
-   *(or in `psql`: `CREATE DATABASE shipment_manager;`)*
-
-2. Run the Phase 1 initial schema:
+2. Run initial Phase 1 foundation:
    ```bash
    psql -d shipment_manager -f database/schema.sql
    ```
+3. Run Phase 2 Users migration:
+   ```bash
+   psql -d shipment_manager -f database/migrations/001_create_users_table.sql
+   ```
 
 ### 4.3 Backend Configuration
-1. Navigate to the backend directory and install dependencies:
+1. Navigate to `backend/` and install dependencies:
    ```bash
    cd backend
    npm install
    ```
 
-2. Create your local environment file from the example template:
+2. Create `.env` from template:
    ```bash
    cp .env.example .env
    ```
 
-3. Update `.env` with your PostgreSQL user and credentials:
+3. Configure environment variables in `backend/.env`:
    ```env
    PORT=5000
    NODE_ENV=development
    DATABASE_URL=postgresql://YOUR_USER:YOUR_PASSWORD@localhost:5432/shipment_manager
    FRONTEND_URL=http://localhost:3000
-   ```
-
-### 4.4 Frontend Configuration
-1. Navigate to the frontend directory and install dependencies:
-   ```bash
-   cd ../frontend
-   npm install
-   ```
-
-2. Create your local environment file:
-   ```bash
-   cp .env.local.example .env.local
-   ```
-
-3. Verify `NEXT_PUBLIC_API_URL`:
-   ```env
-   NEXT_PUBLIC_API_URL=http://localhost:5000/api
+   JWT_SECRET=your_long_random_64_char_secret_key_here
+   JWT_EXPIRES_IN=15m
    ```
 
 ---
 
 ## 5. Running the Application
 
-### 5.1 Starting the Backend
-From `backend/`:
-* **Development Mode (Watcher):**
-  ```bash
-  npm run dev
-  ```
-* **Production / Normal Start:**
-  ```bash
-  npm start
-  ```
-The backend server runs on `http://localhost:5000`.
+### 5.1 Starting Backend Server
+```bash
+cd backend
+npm run dev   # Development watcher mode with nodemon
+npm start     # Standard production mode
+```
+Server runs on `http://127.0.0.1:5000` (or `http://localhost:5000`).
 
-> **macOS Note regarding Port 5000:**  
-> On macOS Monterey/Ventura/Sonoma/Sequoia, the default Apple **AirPlay Receiver** service listens on port 5000.  
-> To free port 5000 completely for `localhost`:  
-> Open **System Settings > General > AirDrop & Handoff > toggle "AirPlay Receiver" OFF**.  
-> The backend automatically includes a graceful fallback binding to `127.0.0.1:5000` if port 5000 wildcard is occupied.
+> **macOS AirPlay Note**:  
+> macOS AirPlay Receiver occupies port 5000 wildcard by default. The server automatically falls back to binding `127.0.0.1:5000`. You can also disable AirPlay Receiver in **System Settings > General > AirDrop & Handoff > AirPlay Receiver (OFF)** to free `localhost:5000`.
 
-### 5.2 Starting the Frontend
-From `frontend/`:
-* **Development Mode:**
-  ```bash
-  npm run dev
-  ```
-* **Production Build & Run:**
-  ```bash
-  npm run build
-  npm start
-  ```
-The frontend web app runs on `http://localhost:3000`.
+### 5.2 Starting Frontend Server
+```bash
+cd frontend
+npm run dev   # Runs on http://localhost:3000
+```
 
 ---
 
-## 6. Health Check API (`GET /api/health`)
+## 6. Authentication API Specification
 
-Verifies API operational status and database connection pool health.
-
-### Request
-```http
-GET /api/health HTTP/1.1
-Host: localhost:5000
-Accept: application/json
-```
-
-### Healthy Response (`200 OK`)
-```json
-{
-  "status": "healthy",
-  "version": "1.0.0",
-  "timestamp": "2026-10-12T12:00:00.000Z",
-  "database": {
-    "status": "connected",
-    "timestamp": "2026-10-12T12:00:00.000Z"
+### 6.1 `POST /api/auth/register`
+Creates a new user profile with password hashed via bcrypt (work factor 12).
+* **Request Body**:
+  ```json
+  {
+    "name": "Jane Danodia",
+    "email": "jane@danodia.com",
+    "password": "StrongPassword123!"
   }
-}
-```
-
-### Degraded Response (`503 Service Unavailable`)
-```json
-{
-  "status": "degraded",
-  "version": "1.0.0",
-  "timestamp": "2026-10-12T12:00:00.000Z",
-  "database": {
-    "status": "disconnected",
-    "error": "connection to server at \"localhost\" failed: Connection refused"
+  ```
+* **Success (`201 Created`)**:
+  ```json
+  {
+    "status": "success",
+    "message": "User registered successfully",
+    "data": {
+      "user": {
+        "id": "e6a143d2-36a8-4bb8-9588-4e89bb0dfb2c",
+        "name": "Jane Danodia",
+        "email": "jane@danodia.com",
+        "created_at": "2026-10-12T12:35:00.000Z",
+        "updated_at": "2026-10-12T12:35:00.000Z"
+      }
+    }
   }
-}
+  ```
+* **Conflict (`409 Conflict`)**: Returned when email already exists.
+* **Validation Failure (`400 Bad Request`)**: Returned when Joi validation fails.
+
+### 6.2 `POST /api/auth/login`
+Authenticates credentials and returns a short-lived signed JWT access token.
+* **Request Body**:
+  ```json
+  {
+    "email": "jane@danodia.com",
+    "password": "StrongPassword123!"
+  }
+  ```
+* **Success (`200 OK`)**:
+  ```json
+  {
+    "status": "success",
+    "message": "Login successful",
+    "data": {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "user": {
+        "id": "e6a143d2-36a8-4bb8-9588-4e89bb0dfb2c",
+        "name": "Jane Danodia",
+        "email": "jane@danodia.com",
+        "created_at": "2026-10-12T12:35:00.000Z",
+        "updated_at": "2026-10-12T12:35:00.000Z"
+      }
+    }
+  }
+  ```
+* **Failure (`401 Unauthorized`)**: Generic `"Invalid email or password"` for incorrect credentials.
+
+### 6.3 `GET /api/auth/me`
+Retrieves authenticated user profile.
+* **Headers**: `Authorization: Bearer <token>`
+* **Success (`200 OK`)**:
+  ```json
+  {
+    "status": "success",
+    "data": {
+      "user": {
+        "id": "e6a143d2-36a8-4bb8-9588-4e89bb0dfb2c",
+        "name": "Jane Danodia",
+        "email": "jane@danodia.com",
+        "created_at": "2026-10-12T12:35:00.000Z",
+        "updated_at": "2026-10-12T12:35:00.000Z"
+      }
+    }
+  }
+  ```
+* **Failure (`401 Unauthorized`)**: Returned when token is missing, invalid, or expired.
+
+### 6.4 `POST /api/auth/logout`
+Stateless token logout confirmation.
+* **Success (`200 OK`)**:
+  ```json
+  {
+    "status": "success",
+    "message": "Logged out successfully. Please discard the client access token."
+  }
+  ```
+
+---
+
+## 7. Testing & Verification
+
+### 7.1 Automated Backend Test Suite
+Run the Phase 2 test suite directly:
+```bash
+cd backend
+npm test
 ```
+Executes all 10 verification scenarios:
+* Register new user → HTTP 201
+* Register duplicate email → HTTP 409
+* Register invalid payload → HTTP 400
+* Login valid credentials → HTTP 200 + JWT
+* Login invalid credentials → HTTP 401
+* Authenticated profile `/api/auth/me` → HTTP 200
+* Missing token `/api/auth/me` → HTTP 401
+* Tampered token `/api/auth/me` → HTTP 401
+* Database verification: bcrypt hash stored, never plaintext
+* Health check `/api/health` → HTTP 200
 
----
-
-## 7. Security Best Practices
-
-* Actual credentials, database connection strings, and local settings are stored in `.env` and `.env.local`.
-* Local `.env*` files are strictly excluded from version control via `.gitignore`.
-* Only template files (`.env.example` and `.env.local.example`) are committed.
-* Direct PostgreSQL parameterized queries prevent SQL injection.
-* Express CORS origin restriction secures API access.
-
----
-
-## 8. Phase 1 Acceptance Criteria Status
-
-- [x] **Criterion 1**: Frontend starts successfully at `http://localhost:3000`.
-- [x] **Criterion 2**: Backend starts successfully at `http://localhost:5000`.
-- [x] **Criterion 3**: PostgreSQL database `shipment_manager` exists and is initialized.
-- [x] **Criterion 4**: Backend successfully connects to PostgreSQL via `pg.Pool`.
-- [x] **Criterion 5**: `GET /api/health` returns API status, version, timestamp, and database connectivity.
-- [x] **Criterion 6**: Frontend landing page reaches and displays backend health status.
-- [x] **Criterion 7**: Environment files (`.env.example`, `.env.local.example`) configured correctly.
-- [x] **Criterion 8**: No hardcoded credentials; local secrets gitignored.
-- [x] **Criterion 9**: All files strictly conform to the required directory hierarchy.
-- [x] **Criterion 10**: Exclusively Phase 1 scope; ready for Phase 2: JWT Authentication.
+### 7.2 Postman Testing
+Import [postman_collection.json](file:///Users/gurnoorsingh/Downloads/ayush/postman_collection.json) directly into Postman.  
+The collection pre-configures:
+* Automatic JWT extraction into collection variable `{{token}}` on login.
+* Ready-to-run test cases for 201, 409, 400, 200, 401, and `/api/auth/me`.

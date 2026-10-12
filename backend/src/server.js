@@ -2,6 +2,16 @@ const path = require('path');
 // Load environment variables before any other module imports
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
+// Validate required environment variables at startup
+const requiredEnvVars = ['JWT_SECRET', 'DATABASE_URL'];
+const missingEnvVars = requiredEnvVars.filter((key) => !process.env[key] || process.env[key].trim() === '');
+
+if (missingEnvVars.length > 0) {
+  console.error(`[Fatal Startup Error]: Missing required environment variables: ${missingEnvVars.join(', ')}`);
+  console.error('Please configure these variables in your backend/.env file before starting the server.');
+  process.exit(1);
+}
+
 const app = require('./app');
 const { testConnection, pool } = require('./config/database');
 
@@ -22,6 +32,7 @@ const startServer = async () => {
       const server = app.listen(port, host, () => {
         console.log(`[Danodia FreightOS API] Running on http://${host === '0.0.0.0' ? 'localhost' : host}:${port}`);
         console.log(`[Danodia FreightOS API] Health Check: http://${host === '0.0.0.0' ? 'localhost' : host}:${port}/api/health`);
+        console.log(`[Danodia FreightOS API] Auth Routes: http://${host === '0.0.0.0' ? 'localhost' : host}:${port}/api/auth`);
       });
 
       server.on('error', (err) => {
