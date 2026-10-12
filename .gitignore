@@ -44,3 +44,6 @@ ehthumbs.db
 # Testing / Coverage
 coverage/
 .nyc_output/
+
+# Next.js agent docs
+AGENTS.md
