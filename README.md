@@ -167,31 +167,55 @@ npm test
 
 # Frontend Test Suite (Phase 3 Integration & Routes):
 cd frontend
-npm test
+node test_phase3.js
+
+# Frontend Test Suite (Phase 4 Dashboard UI & Specifications):
+cd frontend
+node test_phase4.js
 ```
 
-### Phase 3 Test Results:
+---
+
+## 7. Phase 4: Shipment Manager — Dashboard UI Implementation
+
+### 7.1 Architecture & Component Hierarchy
+* `Sidebar.tsx`: Fixed-width dark navy (`#0B1020`) sidebar with Danodia FreightOS branding, "Danodia Global Exports" workspace, primary purple `+ Create Shipment` button, `Dashboard` (active), `Analytics`, `Saved Watchlist`, and authenticated user profile section with sign-out.
+* `DashboardHeader.tsx`: "Global Shipments" heading, subtitle, mobile drawer toggle button, and right-aligned "Export CSV" button.
+* `SummaryCard.tsx`: Five distinct origin summary cards (`All Origins` with `#503BFF` highlighted border, `USA`, `UK`, `Germany`, `Walmart US`), each rendering shipment count, total weight in kg, and total volume in CBM.
+* `ShipmentFilters.tsx`: Search input with exact placeholder (`Search by Invoice No. or FBA ID...`), status dropdown (`All Statuses` default), and mock state toggle.
+* `ShipmentResults.tsx`: Bordered results panel with total metrics bar (boxes, weight, volume), empty state view (package icon, "No shipments found", supporting copy, `+ Add Shipment` button), and horizontally scrollable table placeholder.
+* `ShipmentModal.tsx`: Modal shell with title, close icon, Cancel button, and disabled `Save Record (Phase 5)` button ensuring no premature CRUD or fake records are inserted.
+* `mock-data.ts`: Isolated mock dataset defining `INITIAL_ORIGIN_SUMMARIES`, `SAMPLE_SHIPMENTS`, and `STATUS_OPTIONS`.
+
+### 7.2 Phase 4 Acceptance Test Results:
 ```text
 ====================================================
-DANODIA FREIGHTOS — PHASE 3 ACCEPTANCE TEST SUITE
+DANODIA FREIGHTOS — PHASE 4 ACCEPTANCE TEST SUITE
 ====================================================
 
-[PASS] 1. /login loads successfully with FreightOS branding and sign-in header
-[PASS] 2. /register loads successfully with FreightOS branding and registration header
-[PASS] 3. User registration through backend succeeds with HTTP 201 and normalized email
-[PASS] 4. Duplicate email produces clear HTTP 409 error
-[PASS] 5. Valid login establishes authenticated session and returns JWT token & user profile
-[PASS] 6. Invalid login produces generic HTTP 401 error message without revealing internals
-[PASS] 7. Protected profile verification (/api/auth/me) succeeds with Bearer token
-[PASS] 8. /dashboard route exists and includes FreightOS shell layout
-[PASS] 9. Invalid or tampered token is rejected with HTTP 401
-[PASS] 10. Logout endpoint responds with HTTP 200 success
-[PASS] 11. Root / route is operational and manages authentication redirection
-[PASS] 12. Phase 1 health check endpoint (/api/health) remains 100% operational
+[PASS] 1.1 Mock data module exists (lib/dashboard/mock-data.ts)
+[PASS] 1.2 Mock data module defines the 5 origin cards, sample shipments, and status options
+[PASS] 1.3 Dashboard component exists: components/dashboard/Sidebar.tsx
+[PASS] 1.3 Dashboard component exists: components/dashboard/DashboardHeader.tsx
+[PASS] 1.3 Dashboard component exists: components/dashboard/SummaryCard.tsx
+[PASS] 1.3 Dashboard component exists: components/dashboard/ShipmentFilters.tsx
+[PASS] 1.3 Dashboard component exists: components/dashboard/ShipmentResults.tsx
+[PASS] 1.3 Dashboard component exists: components/dashboard/ShipmentModal.tsx
+[PASS] 2. Sidebar implements dark navy theme (#0B1020), FreightOS branding, workspace, + Create Shipment button, nav items, and profile section
+[PASS] 3. DashboardHeader displays Global Shipments heading, subtitle, and right-aligned Export CSV button
+[PASS] 4. SummaryCard renders shipment count, weight in kg, volume in CBM, and purple accent border (#503BFF)
+[PASS] 5. ShipmentFilters includes search input with exact placeholder and status dropdown with All Statuses default
+[PASS] 6. ShipmentResults features metric aggregate bar, empty state with package icon and + Add Shipment, and table layout
+[PASS] 7. ShipmentModal implements shell, close controls, Cancel, and safely disabled Save Record button
+[PASS] 8. page.tsx connects both Create Shipment (sidebar) and Add Shipment (empty state) to open the modal, with useAuth protection
+[PASS] 9. Live /dashboard route responds with HTTP 200 containing FreightOS branding and dashboard layout
+[PASS] 10. Backend API (/api/health) and PostgreSQL database connection remain 100% operational
+[PASS] 11. No premature shipment CRUD or database endpoints exist in backend (Phase 5 boundary preserved)
 
 ====================================================
-PHASE 3 TEST SUMMARY: 12 PASSED, 0 FAILED
+PHASE 4 TEST SUMMARY: 18 PASSED, 0 FAILED
 ====================================================
 ```
 
-Ready for **Phase 4: Shipment Manager Dashboard**!
+Ready for **Phase 5: Shipment CRUD & Database Persistence**!
+
