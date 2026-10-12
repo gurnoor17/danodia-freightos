@@ -36,7 +36,7 @@ const startServer = async () => {
       });
 
       server.on('error', (err) => {
-        if (err.code === 'EADDRINUSE' && host === '0.0.0.0') {
+        if (err.code === 'EADDRINUSE' && host === '0.0.0.0' && NODE_ENV !== 'production') {
           console.warn(`[Server] Warning: Port ${port} wildcard (0.0.0.0) is occupied (often macOS AirPlay Receiver).`);
           console.log(`[Server] Automatically falling back to binding 127.0.0.1:${port}...`);
           listenOn(port, '127.0.0.1');

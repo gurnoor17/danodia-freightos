@@ -54,7 +54,7 @@ const DEFAULT_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:500
  * Executes a resilient fetch with automatic fallback for macOS localhost/127.0.0.1 port 5000 collision.
  */
 async function fetchWithFallback(endpoint: string, options: RequestInit = {}): Promise<Response> {
-  let primaryUrl = `${DEFAULT_API_URL}${endpoint}`;
+  const primaryUrl = `${DEFAULT_API_URL}${endpoint}`;
   try {
     const res = await fetch(primaryUrl, options);
     // If localhost failed with forbidden (AirPlay collision), throw to attempt fallback

@@ -14,7 +14,7 @@ import {
 
 export default function AnalyticsPage() {
   const router = useRouter();
-  const { user, token, isAuthenticated, isLoading } = useAuth();
+  const { token, isAuthenticated, isLoading } = useAuth();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [analyticsData, setAnalyticsData] = useState<AnalyticsResponse | null>(null);
@@ -257,7 +257,7 @@ export default function AnalyticsPage() {
                             <div className="flex items-center gap-2 text-slate-500 font-mono text-[11px]">
                               <span>{r.count} shipments ({percentage}%)</span>
                               <span className="text-slate-300">·</span>
-                              <span>{vol.toFixed(1)} CBM</span>
+                              <span>{vol.toFixed(1)} CBM ({wt.toLocaleString()} kg)</span>
                             </div>
                           </div>
                           <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden flex">

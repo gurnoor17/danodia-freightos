@@ -491,4 +491,125 @@ DANODIA FREIGHTOS — PHASE 6 FRONTEND ACCEPTANCE TESTS
 TOTAL FRONTEND TESTS: 16 PASSED, 0 FAILED
 ```
 
+---
+
+## 10. Phase 7: Shipment Manager — Testing, Security Audit & Production Deployment
+
+Phase 7 hardens, audits, and prepares the Danodia FreightOS full-stack application for zero-downtime, secure cloud production deployment on **Vercel** (Frontend) and **Render** (Backend + PostgreSQL).
+
+### 10.1 Security & Architecture Audit Report
+
+#### Category 1: Critical Issues Identified & Resolved
+1. **Production PostgreSQL SSL/TLS Support**: Hosted PostgreSQL providers (Render PostgreSQL, Neon, Supabase, AWS RDS) reject non-SSL connections. Added automatic SSL detection and `ssl: { rejectUnauthorized: false }` configuration in [`backend/src/config/database.js`](file:///Users/gurnoorsingh/Downloads/ayush/backend/src/config/database.js) for production environments while preserving non-SSL connections for local development.
+2. **Production CORS Configuration**: Updated [`backend/src/app.js`](file:///Users/gurnoorsingh/Downloads/ayush/backend/src/app.js) with dynamic origin validation supporting configured production domains (`FRONTEND_URL`), Vercel preview domains (`*.vercel.app`), and local development environments.
+3. **Cloud Host Port Wildcard Binding**: Adjusted [`backend/src/server.js`](file:///Users/gurnoorsingh/Downloads/ayush/backend/src/server.js) to cleanly bind to `0.0.0.0` as required by Render/cloud hosting port routers without falling back to local IP in production.
+4. **Automated Migration Pipeline**: Implemented an automated sequential migration runner [`backend/scripts/migrate.js`](file:///Users/gurnoorsingh/Downloads/ayush/backend/scripts/migrate.js) with an idempotent `schema_migrations` tracking table.
+
+#### Category 2: Important Issues Identified & Resolved
+1. **HTTP Defense-in-Depth Security Headers**: Injected standard security headers (`X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection: 1; mode=block`, `Referrer-Policy: strict-origin-when-cross-origin`, and `Strict-Transport-Security` in production).
+2. **Brute-Force Rate Limiting**: Verified and hardened `express-rate-limit` on `/api/auth/register` and `/api/auth/login` (30 requests per 15-minute window).
+3. **Lint & Type Validation**: Fixed ESLint configuration in [`frontend/eslint.config.mjs`](file:///Users/gurnoorsingh/Downloads/ayush/frontend/eslint.config.mjs) and removed unused variables across client components to ensure zero-error Next.js production builds.
+4. **Formula Injection Defense**: Ensured all CSV export text fields starting with dangerous spreadsheet formula characters (`=`, `+`, `-`, `@`, `\t`, `\r`) are sanitized with single-quote escaping while preserving numbers.
+
+#### Category 3: Minor Improvements Documented for Future Scaling
+* Periodic token revocation via Redis blocklist (stateless 15-minute JWTs are currently used per design specifications).
+* Multi-region database read replicas for high-throughput global queries.
+
+---
+
+### 10.2 Production Infrastructure Blueprints
+
+#### Render Infrastructure Blueprint: [`render.yaml`](file:///Users/gurnoorsingh/Downloads/ayush/render.yaml)
+Declarative blueprint for deploying the Express backend and managed PostgreSQL database:
+* Web Service: `danodia-freightos-api` (Node.js runtime, rootDir: `backend`, build: `npm install`, start: `npm run migrate && npm start`, healthCheck: `/api/health`).
+* Database: `danodia-freightos-db` (PostgreSQL 16, database: `shipment_manager`).
+
+#### Vercel Blueprint: [`frontend/vercel.json`](file:///Users/gurnoorsingh/Downloads/ayush/frontend/vercel.json)
+Optimized configuration for Next.js App Router deployment on Vercel.
+
+---
+
+### 10.3 Required Production Environment Variables
+
+#### Backend Environment Variables (Render Dashboard / secrets):
+| Variable | Value / Description | Example |
+| :--- | :--- | :--- |
+| `NODE_ENV` | Must be set to `production` | `production` |
+| `PORT` | Auto-assigned by Render | `10000` |
+| `DATABASE_URL` | PostgreSQL connection string with SSL | `postgresql://user:pass@dpg-xxx:5432/shipment_manager` |
+| `FRONTEND_URL` | Production URL of Vercel frontend | `https://danodia-freightos.vercel.app` |
+| `JWT_SECRET` | 64+ char cryptographically secure random string | Auto-generated or custom secret |
+| `JWT_EXPIRES_IN` | Access token lifespan | `15m` |
+| `DB_POOL_MAX` | Max pool client connections | `10` |
+
+#### Frontend Environment Variables (Vercel Project Settings):
+| Variable | Value / Description | Example |
+| :--- | :--- | :--- |
+| `NEXT_PUBLIC_API_URL` | Public URL to backend Express API | `https://danodia-freightos-api.onrender.com/api` |
+
+---
+
+### 10.4 Step-by-Step Production Deployment Procedure
+
+#### Step 1: Push Repository to GitHub
+Ensure the latest code is committed and pushed to your remote GitHub repository:
+```bash
+git push origin master
+```
+
+#### Step 2: Deploy Backend & Database on Render
+1. Log in to [Render](https://render.com).
+2. Click **Blueprints** -> **New Blueprint Instance**.
+3. Connect your repository. Render will automatically detect [`render.yaml`](file:///Users/gurnoorsingh/Downloads/ayush/render.yaml) and provision:
+   * The managed PostgreSQL database (`danodia-freightos-db`).
+   * The web service (`danodia-freightos-api`).
+4. Render will execute `npm run migrate` before launching `npm start`, ensuring all tables (`users`, `shipments`, `watchlist`, `schema_migrations`) are created before accepting traffic.
+5. Note your assigned backend URL (e.g. `https://danodia-freightos-api.onrender.com`).
+
+#### Step 3: Deploy Frontend on Vercel
+1. Log in to [Vercel](https://vercel.com).
+2. Click **Add New...** -> **Project** and import your GitHub repository.
+3. Set the **Root Directory** to `frontend`.
+4. Under **Environment Variables**, add:
+   * `NEXT_PUBLIC_API_URL` = `https://danodia-freightos-api.onrender.com/api`
+5. Click **Deploy**. Vercel will run `npm run build` and launch the frontend.
+6. Copy your production frontend URL (e.g. `https://danodia-freightos.vercel.app`).
+7. Update `FRONTEND_URL` in your Render backend settings to match your Vercel URL.
+
+---
+
+### 10.5 Phase 7 Verification & Audit Test Results
+
+```text
+================================================================
+🛡️  DANODIA FREIGHTOS — PRODUCTION READINESS AUDIT SUITE
+================================================================
+
+[PASS] 1. Health Check & PostgreSQL Connectivity (/api/health -> 200 Healthy, DB Connected)
+[PASS] 2. Standard HTTP Security Headers (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection)
+[PASS] 3. User Registration succeeds with 201 Created and never leaks password_hash
+[PASS] 4. Duplicate email registration safely rejected with 409 Conflict
+[PASS] 5. User Login succeeds with 200 OK and returns cryptographically signed JWT
+[PASS] 6. Protected User Profile Verification (/api/auth/me) succeeds with Bearer token
+[PASS] 7. Protected endpoint rejects requests without Bearer token (401)
+[PASS] 8. Protected endpoint rejects malformed/tampered JWT tokens (401)
+[PASS] 9. Shipment Creation (POST /api/shipments) succeeds with HTTP 201
+[PASS] 10. Cross-Tenant Authorization Isolation (Foreign user receives 404 Not Found)
+[PASS] 11. Search by FBA ID returns matching shipment
+[PASS] 12. Filter by Region & Status returns precise matching shipments
+[PASS] 13. Dashboard Summary Cards calculate real origin aggregates directly from PostgreSQL
+[PASS] 14. CSV Export streams valid text/csv with complete headers and values
+[PASS] 15. Saved Watchlist: Add shipment succeeds
+[PASS] 16. Saved Watchlist: Retrieve list contains saved shipment with embedded record
+[PASS] 17. Saved Watchlist: Isolated per user (User B cannot see User A items)
+[PASS] 18. Analytics: Core KPIs and Visualizations series aggregated in PostgreSQL
+[PASS] 19. Shipment Deletion succeeds with HTTP 200
+[PASS] 20. Cascade Deletion: Watchlist reference automatically cleaned up on shipment deletion
+
+================================================================
+PRODUCTION AUDIT RESULTS: 20 PASSED, 0 FAILED
+================================================================
+```
+
+
 

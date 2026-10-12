@@ -33,7 +33,7 @@ const DEFAULT_ORIGIN_SUMMARIES: ShipmentSummaryResponse = {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, token, isAuthenticated, isLoading } = useAuth();
+  const { token, isAuthenticated, isLoading } = useAuth();
 
   // Navigation & Drawer State
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);

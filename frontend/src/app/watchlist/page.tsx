@@ -15,7 +15,7 @@ import {
 
 export default function WatchlistPage() {
   const router = useRouter();
-  const { user, token, isAuthenticated, isLoading } = useAuth();
+  const { token, isAuthenticated, isLoading } = useAuth();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
