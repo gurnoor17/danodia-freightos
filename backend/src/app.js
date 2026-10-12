@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const healthRoutes = require('./routes/health');
 const authRoutes = require('./routes/auth.routes');
+const shipmentRoutes = require('./routes/shipment.routes');
 const errorMiddleware = require('./middleware/error.middleware');
 
 const app = express();
@@ -24,6 +25,7 @@ app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 // API Routes
 app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/shipments', shipmentRoutes);
 
 // Root informational route
 app.get('/', (req, res) => {

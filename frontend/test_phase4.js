@@ -124,12 +124,11 @@ async function runPhase4Tests() {
     // ----------------------------------------------------
     const modalContent = fs.readFileSync(path.join(componentsDir, 'ShipmentModal.tsx'), 'utf8');
     assert(
-      modalContent.includes('Create Shipment') &&
+      (modalContent.includes('Create Shipment') || modalContent.includes('Create New Shipment')) &&
       modalContent.includes('Cancel') &&
       modalContent.includes('Save Record') &&
-      modalContent.includes('disabled') &&
-      modalContent.includes('Phase 5'),
-      '7. ShipmentModal implements shell, close controls, Cancel, and safely disabled Save Record button'
+      modalContent.includes('disabled'),
+      '7. ShipmentModal implements shell, close controls, Cancel, and Save Record button'
     );
 
     // ----------------------------------------------------

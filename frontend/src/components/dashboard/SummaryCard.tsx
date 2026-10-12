@@ -1,10 +1,10 @@
 'use client';
 
 import React from 'react';
-import { OriginSummary } from '@/lib/dashboard/mock-data';
+import { OriginSummaryData } from '@/lib/api';
 
 interface SummaryCardProps {
-  summary: OriginSummary;
+  summary: OriginSummaryData;
   isSelected?: boolean;
   onSelect?: () => void;
 }
@@ -12,6 +12,9 @@ interface SummaryCardProps {
 export function SummaryCard({ summary, isSelected = false, onSelect }: SummaryCardProps) {
   const isAllOrigins = summary.id === 'all';
   const highlighted = isSelected || summary.isHighlighted;
+  const count = summary.shipmentCount ?? 0;
+  const weight = summary.totalWeightKg ?? 0;
+  const volume = summary.totalVolumeCbm ?? 0;
 
   return (
     <div
@@ -54,10 +57,10 @@ export function SummaryCard({ summary, isSelected = false, onSelect }: SummaryCa
       {/* Main Metric: Shipment Count */}
       <div className="py-3">
         <div className="text-2xl font-extrabold text-[#0B1020]">
-          {summary.shipmentCount}
+          {count}
         </div>
         <div className="text-xs text-slate-400 font-medium mt-0.5">
-          {summary.shipmentCount === 1 ? 'Active Shipment' : 'Active Shipments'}
+          {count === 1 ? 'Active Shipment' : 'Active Shipments'}
         </div>
       </div>
 
@@ -66,13 +69,13 @@ export function SummaryCard({ summary, isSelected = false, onSelect }: SummaryCa
         <div>
           <span className="block text-[11px] text-slate-400 font-medium">Total Weight</span>
           <span className="font-semibold text-slate-700 font-mono">
-            {summary.totalWeightKg.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg
+            {Number(weight).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg
           </span>
         </div>
         <div>
           <span className="block text-[11px] text-slate-400 font-medium">Total Volume</span>
           <span className="font-semibold text-slate-700 font-mono">
-            {summary.totalVolumeCbm.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CBM
+            {Number(volume).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CBM
           </span>
         </div>
       </div>

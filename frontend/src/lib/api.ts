@@ -191,3 +191,273 @@ export async function logoutUser(token?: string): Promise<void> {
     // Client-side logout proceeds even if network request fails
   }
 }
+
+// ============================================================================
+// Phase 5: Shipment CRUD API Client
+// ============================================================================
+
+export interface ShipmentRecord {
+  id: string;
+  region: string;
+  category: string | null;
+  assigned_manager: string;
+  invoice_no: string;
+  fba_id: string | null;
+  container_no: string;
+  number_of_boxes: number;
+  total_weight_kg: number;
+  volume_cbm: number;
+  pickup_date: string;
+  sailing_date: string;
+  expected_eta: string;
+  actual_arrival: string | null;
+  status: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateShipmentPayload {
+  region: string;
+  category?: string | null;
+  assigned_manager: string;
+  invoice_no: string;
+  fba_id?: string | null;
+  container_no: string;
+  number_of_boxes: number;
+  total_weight_kg: number;
+  volume_cbm: number;
+  pickup_date: string;
+  sailing_date: string;
+  expected_eta: string;
+  actual_arrival?: string | null;
+  status?: string;
+}
+
+export interface ShipmentQueryParams {
+  search?: string;
+  region?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface ShipmentListResponse {
+  shipments: ShipmentRecord[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+  summary: {
+    count: number;
+    totalBoxes: number;
+    totalWeightKg: number;
+    totalVolumeCbm: number;
+  };
+}
+
+export interface OriginSummaryData {
+  id: string;
+  title: string;
+  shipmentCount: number;
+  totalWeightKg: number;
+  totalVolumeCbm: number;
+  isHighlighted?: boolean;
+}
+
+export interface ShipmentSummaryResponse {
+  all: OriginSummaryData;
+  usa: OriginSummaryData;
+  uk: OriginSummaryData;
+  germany: OriginSummaryData;
+  walmart_us: OriginSummaryData;
+}
+
+/**
+ * Fetch list of shipments with search, filtering, and aggregates
+ * GET /api/shipments
+ */
+export async function getShipments(
+  token: string,
+  params: ShipmentQueryParams = {}
+): Promise<ShipmentListResponse> {
+  const query = new URLSearchParams();
+  if (params.search) query.set('search', params.search);
+  if (params.region && params.region !== 'all') query.set('region', params.region);
+  if (params.status && params.status !== 'All Statuses') query.set('status', params.status);
+  if (params.page) query.set('page', String(params.page));
+  if (params.limit) query.set('limit', String(params.limit));
+  if (params.sortBy) query.set('sortBy', params.sortBy);
+  if (params.sortOrder) query.set('sortOrder', params.sortOrder);
+
+  const qs = query.toString();
+  const endpoint = `/shipments${qs ? `?${qs}` : ''}`;
+
+  let response: Response;
+  try {
+    response = await fetchWithFallback(endpoint, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (err) {
+    throw new ApiError(
+      err instanceof Error && err.message !== 'Failed to fetch'
+        ? err.message
+        : 'Network error while fetching shipments.',
+      0
+    );
+  }
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new ApiError(data?.message || 'Failed to fetch shipments', response.status, data?.errors);
+  }
+  return data.data;
+}
+
+/**
+ * Fetch database aggregates across all origin regions
+ * GET /api/shipments/summary
+ */
+export async function getShipmentSummary(token: string): Promise<ShipmentSummaryResponse> {
+  let response: Response;
+  try {
+    response = await fetchWithFallback('/shipments/summary', {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (err) {
+    throw new ApiError(
+      err instanceof Error && err.message !== 'Failed to fetch'
+        ? err.message
+        : 'Network error while fetching shipment summary.',
+      0
+    );
+  }
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new ApiError(data?.message || 'Failed to fetch shipment summary', response.status);
+  }
+  return data.data;
+}
+
+/**
+ * Create a new shipment record
+ * POST /api/shipments
+ */
+export async function createShipment(
+  token: string,
+  payload: CreateShipmentPayload
+): Promise<ShipmentRecord> {
+  let response: Response;
+  try {
+    response = await fetchWithFallback('/shipments', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (err) {
+    throw new ApiError(
+      err instanceof Error && err.message !== 'Failed to fetch'
+        ? err.message
+        : 'Network error while creating shipment.',
+      0
+    );
+  }
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || 'Failed to create shipment',
+      response.status,
+      data?.errors
+    );
+  }
+  return data.data.shipment;
+}
+
+/**
+ * Retrieve a single shipment by ID
+ * GET /api/shipments/:id
+ */
+export async function getShipmentById(token: string, id: string): Promise<ShipmentRecord> {
+  let response: Response;
+  try {
+    response = await fetchWithFallback(`/shipments/${id}`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (err) {
+    throw new ApiError('Network error while retrieving shipment.', 0);
+  }
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new ApiError(data?.message || 'Shipment not found', response.status);
+  }
+  return data.data.shipment;
+}
+
+/**
+ * Update an existing shipment
+ * PATCH /api/shipments/:id
+ */
+export async function updateShipment(
+  token: string,
+  id: string,
+  payload: Partial<CreateShipmentPayload>
+): Promise<ShipmentRecord> {
+  let response: Response;
+  try {
+    response = await fetchWithFallback(`/shipments/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (err) {
+    throw new ApiError('Network error while updating shipment.', 0);
+  }
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || 'Failed to update shipment',
+      response.status,
+      data?.errors
+    );
+  }
+  return data.data.shipment;
+}
+
+/**
+ * Delete a shipment
+ * DELETE /api/shipments/:id
+ */
+export async function deleteShipment(token: string, id: string): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetchWithFallback(`/shipments/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (err) {
+    throw new ApiError('Network error while deleting shipment.', 0);
+  }
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new ApiError(data?.message || 'Failed to delete shipment', response.status);
+  }
+}
+

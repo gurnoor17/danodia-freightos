@@ -1,4 +1,7 @@
-const { Pool } = require('pg');
+const { Pool, types } = require('pg');
+
+// Type parser for PostgreSQL DATE (OID 1082) to prevent timezone day-shift
+types.setTypeParser(1082, (val) => val);
 
 // Create PostgreSQL connection pool
 const pool = new Pool({

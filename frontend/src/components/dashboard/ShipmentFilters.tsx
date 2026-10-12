@@ -1,7 +1,15 @@
 'use client';
 
 import React from 'react';
-import { STATUS_OPTIONS } from '@/lib/dashboard/mock-data';
+
+export const STATUS_OPTIONS = [
+  'All Statuses',
+  'In Transit',
+  'Pending Customs',
+  'Booked',
+  'Delivered',
+  'Cancelled',
+];
 
 export const DEFAULT_STATUS_FILTER = 'All Statuses';
 

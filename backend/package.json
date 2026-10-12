@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "node test_auth.js"
+    "test": "node test_auth.js && node test_shipments.js"
   },
   "keywords": [
     "freightos",

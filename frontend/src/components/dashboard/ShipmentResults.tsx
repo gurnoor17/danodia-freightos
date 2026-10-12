@@ -1,20 +1,43 @@
 'use client';
 
 import React from 'react';
-import { ShipmentItem } from '@/lib/dashboard/mock-data';
+import { ShipmentRecord } from '@/lib/api';
 
 interface ShipmentResultsProps {
-  shipments: ShipmentItem[];
+  shipments: ShipmentRecord[];
+  summaryTotals?: {
+    totalBoxes: number;
+    totalWeightKg: number;
+    totalVolumeCbm: number;
+  };
   onOpenAddShipment: () => void;
+  onEditShipment?: (shipment: ShipmentRecord) => void;
+  onDeleteShipment?: (shipment: ShipmentRecord) => void;
+  isDeletingId?: string | null;
 }
 
-export function ShipmentResults({ shipments, onOpenAddShipment }: ShipmentResultsProps) {
-  // Aggregate metrics
-  const totalBoxes = shipments.reduce((acc, curr) => acc + curr.boxes, 0);
-  const totalWeight = shipments.reduce((acc, curr) => acc + curr.weightKg, 0);
-  const totalVolume = shipments.reduce((acc, curr) => acc + curr.volumeCbm, 0);
+export function ShipmentResults({
+  shipments,
+  summaryTotals,
+  onOpenAddShipment,
+  onEditShipment,
+  onDeleteShipment,
+  isDeletingId,
+}: ShipmentResultsProps) {
+  // Aggregate metrics from prop or local calculation
+  const totalBoxes = summaryTotals
+    ? summaryTotals.totalBoxes
+    : shipments.reduce((acc, curr) => acc + (curr.number_of_boxes || 0), 0);
 
-  const getStatusBadge = (status: ShipmentItem['status']) => {
+  const totalWeight = summaryTotals
+    ? summaryTotals.totalWeightKg
+    : shipments.reduce((acc, curr) => acc + (curr.total_weight_kg || 0), 0);
+
+  const totalVolume = summaryTotals
+    ? summaryTotals.totalVolumeCbm
+    : shipments.reduce((acc, curr) => acc + (curr.volume_cbm || 0), 0);
+
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case 'In Transit':
         return 'bg-blue-50 text-blue-700 border-blue-200';
@@ -62,7 +85,7 @@ export function ShipmentResults({ shipments, onOpenAddShipment }: ShipmentResult
         </div>
       </div>
 
-      {/* Content Area: Empty State vs Horizontally Scrollable Table Placeholder */}
+      {/* Content Area: Empty State vs Live Data Table */}
       {shipments.length === 0 ? (
         /* Empty State */
         <div className="py-20 px-4 flex flex-col items-center justify-center text-center">
@@ -98,17 +121,18 @@ export function ShipmentResults({ shipments, onOpenAddShipment }: ShipmentResult
           </button>
         </div>
       ) : (
-        /* Populated Table Placeholder */
+        /* Populated Live Table */
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs sm:text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                 <th className="py-3 px-4 sm:px-6">Invoice & FBA</th>
-                <th className="py-3 px-4">Region / Route</th>
-                <th className="py-3 px-4">Cargo Manager</th>
+                <th className="py-3 px-4">Origin / Container</th>
+                <th className="py-3 px-4">Assigned Manager</th>
                 <th className="py-3 px-4">Cargo Metrics</th>
                 <th className="py-3 px-4">Logistics Dates</th>
                 <th className="py-3 px-4 text-center">Status</th>
+                <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
@@ -116,38 +140,44 @@ export function ShipmentResults({ shipments, onOpenAddShipment }: ShipmentResult
                 <tr key={shipment.id} className="hover:bg-slate-50/60 transition-colors">
                   {/* Invoice & FBA */}
                   <td className="py-3.5 px-4 sm:px-6">
-                    <div className="font-bold text-[#0B1020]">{shipment.invoiceNo}</div>
-                    <div className="text-[11px] font-mono text-slate-400 mt-0.5">{shipment.fbaId}</div>
+                    <div className="font-bold text-[#0B1020]">{shipment.invoice_no}</div>
+                    <div className="text-[11px] font-mono text-slate-400 mt-0.5">
+                      {shipment.fba_id || '—'}
+                    </div>
                   </td>
 
-                  {/* Region / Route */}
+                  {/* Origin & Container */}
                   <td className="py-3.5 px-4">
                     <div className="flex items-center gap-1.5 font-semibold text-slate-800">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#503BFF]"></span>
-                      <span>{shipment.origin}</span>
+                      <span>{shipment.region}</span>
                     </div>
-                    <div className="text-[11px] text-slate-400 mt-0.5 truncate max-w-[180px]">
-                      {shipment.destination}
+                    <div className="text-[11px] font-mono text-slate-400 mt-0.5 truncate max-w-[180px]">
+                      {shipment.container_no}
                     </div>
                   </td>
 
                   {/* Manager */}
                   <td className="py-3.5 px-4 text-slate-700">
-                    <div className="font-medium">{shipment.manager}</div>
+                    <div className="font-medium">{shipment.assigned_manager}</div>
                   </td>
 
                   {/* Cargo Metrics */}
                   <td className="py-3.5 px-4 font-mono">
-                    <div className="text-slate-800 font-semibold">{shipment.boxes} boxes</div>
+                    <div className="text-slate-800 font-semibold">{shipment.number_of_boxes} boxes</div>
                     <div className="text-[11px] text-slate-400">
-                      {shipment.weightKg.toLocaleString()} kg · {shipment.volumeCbm} CBM
+                      {Number(shipment.total_weight_kg).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg · {Number(shipment.volume_cbm).toFixed(2)} CBM
                     </div>
                   </td>
 
                   {/* Logistics Dates */}
                   <td className="py-3.5 px-4 text-slate-600 font-mono text-[11px]">
-                    <div>Dep: {shipment.departureDate}</div>
-                    <div className="text-slate-400">Est: {shipment.estimatedArrival}</div>
+                    <div>Pickup: {shipment.pickup_date}</div>
+                    <div>Sailing: {shipment.sailing_date}</div>
+                    <div className="text-slate-400">ETA: {shipment.expected_eta}</div>
+                    {shipment.actual_arrival && (
+                      <div className="text-emerald-600 font-semibold">Arrived: {shipment.actual_arrival}</div>
+                    )}
                   </td>
 
                   {/* Status */}
@@ -159,6 +189,45 @@ export function ShipmentResults({ shipments, onOpenAddShipment }: ShipmentResult
                     >
                       {shipment.status}
                     </span>
+                  </td>
+
+                  {/* Actions (Edit & Delete) */}
+                  <td className="py-3.5 px-4 text-right">
+                    <div className="inline-flex items-center gap-1.5">
+                      {onEditShipment && (
+                        <button
+                          type="button"
+                          onClick={() => onEditShipment(shipment)}
+                          title="Edit Shipment"
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-[#503BFF] hover:bg-indigo-50 transition-colors cursor-pointer"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                      )}
+
+                      {onDeleteShipment && (
+                        <button
+                          type="button"
+                          onClick={() => onDeleteShipment(shipment)}
+                          disabled={isDeletingId === shipment.id}
+                          title="Delete Shipment"
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer disabled:opacity-50"
+                        >
+                          {isDeletingId === shipment.id ? (
+                            <svg className="animate-spin w-4 h-4 text-rose-500" viewBox="0 0 24 24" fill="none">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                          ) : (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          )}
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

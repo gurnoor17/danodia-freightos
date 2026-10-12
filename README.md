@@ -217,5 +217,110 @@ PHASE 4 TEST SUMMARY: 18 PASSED, 0 FAILED
 ====================================================
 ```
 
-Ready for **Phase 5: Shipment CRUD & Database Persistence**!
+---
+
+## 8. Phase 5: Shipment Manager — Complete Shipment CRUD & Persistence
+
+### 8.1 Database Migration & Schema
+* **Migration File**: [`database/migrations/002_create_shipments_table.sql`](file:///Users/gurnoorsingh/Downloads/ayush/database/migrations/002_create_shipments_table.sql)
+* **Table**: `shipments`
+  * `id`: UUID Primary Key (`gen_random_uuid()`)
+  * `region`: VARCHAR(100) (USA, UK, Germany, Walmart US)
+  * `category`: VARCHAR(100)
+  * `assigned_manager`: VARCHAR(100)
+  * `invoice_no`: VARCHAR(100)
+  * `fba_id`: VARCHAR(100)
+  * `container_no`: VARCHAR(100)
+  * `number_of_boxes`: INTEGER (`CHECK (number_of_boxes >= 0)`)
+  * `total_weight_kg`: NUMERIC(12, 2) (`CHECK (total_weight_kg >= 0)`)
+  * `volume_cbm`: NUMERIC(12, 2) (`CHECK (volume_cbm >= 0)`)
+  * `pickup_date`: DATE
+  * `sailing_date`: DATE
+  * `expected_eta`: DATE
+  * `actual_arrival`: DATE (nullable)
+  * `status`: VARCHAR(50) (Auto-derived: Delivered, In Transit, Pending Customs, Booked, or Cancelled)
+  * `created_by`: UUID foreign key to `users(id) ON DELETE CASCADE`
+  * `created_at`, `updated_at`: TIMESTAMPTZ with automatic trigger
+* **Indexes**:
+  * `idx_shipments_invoice_no`
+  * `idx_shipments_fba_id`
+  * `idx_shipments_region`
+  * `idx_shipments_status`
+  * `idx_shipments_created_by`
+  * `idx_shipments_dates` (`pickup_date`, `sailing_date`, `expected_eta`)
+
+### 8.2 Backend REST API Endpoints (`/api/shipments`)
+All endpoints enforce JWT authentication and user data isolation (`created_by = req.user.id`).
+* `GET /api/shipments/summary`: Single-query database aggregate calculating counts, total weight, and total volume for all origins and each regional card.
+* `GET /api/shipments`: Filter by search term (`invoice_no` / `fba_id`), region, and status with pagination metadata and result-set metric totals.
+* `POST /api/shipments`: Validates body with Joi (checks cargo metrics and date order: `sailing_date >= pickup_date` and `expected_eta >= sailing_date`), inserts parameterized SQL, returns HTTP 201.
+* `GET /api/shipments/:id`: Retrieves shipment by ID with access control (HTTP 404 for missing or unauthorized records).
+* `PATCH /api/shipments/:id`: Partially updates permitted fields with auto-status recalculation, parameterized SQL.
+* `DELETE /api/shipments/:id`: Deletes record with ownership check.
+
+### 8.3 Frontend Modal & Dashboard Features
+* **Modal**: Matches the reference screenshot with 3 distinct numbered sections:
+  * Section 1: Consignment Details (Region dropdown, Assigned Manager, Invoice No., FBA ID, Container No.)
+  * Section 2: Cargo Metrics (Boxes, Total Weight in kg, Volume in CBM)
+  * Section 3: Logistics (Pickup Date, Sailing Date, Expected ETA, Actual Arrival)
+* **Inline Validation**: Field-level error messages and date sequencing checks.
+* **Full CRUD**: Supports creating new shipments, editing existing records, and deleting with confirmation modal.
+* **Real Aggregates**: Removed mock data from production paths; summary cards and results bar calculate directly from PostgreSQL database queries.
+
+### 8.4 Test Suite Verification Results
+
+#### Backend Test Suite (`npm test` in `backend/`):
+```text
+====================================================
+DANODIA FREIGHTOS — PHASE 2 AUTHENTICATION TEST SUITE
+====================================================
+[PASS] 13/13 Authentication & Security Tests Passed
+
+====================================================
+DANODIA FREIGHTOS — PHASE 5 SHIPMENT CRUD TEST SUITE
+====================================================
+[PASS] 0. Test users registered and logged in with valid JWT tokens
+[PASS] 1. Create shipment with valid data -> HTTP 201 with parsed cargo metrics
+[PASS] 2. Reject missing required fields -> HTTP 400
+[PASS] 3. Reject negative number of boxes -> HTTP 400
+[PASS] 4. Reject invalid date sequence (sailing date precedes pickup date) -> HTTP 400
+[PASS] 5. Retrieve created shipment by ID -> HTTP 200
+[PASS] 6. Update shipment fields -> HTTP 200 with updated record
+[PASS] 7. Search by invoice number matches correctly
+[PASS] 8. Search by FBA ID matches correctly
+[PASS] 9. Filter by region returns matching regional shipments
+[PASS] 10. Dashboard database summary calculates correct origin counts, weight, and volume
+[PASS] 11. Access control: Foreign user cannot access owner shipment (HTTP 404)
+[PASS] 12. Access control: Foreign user cannot update owner shipment (HTTP 404)
+[PASS] 13. Delete shipment with owner authorization -> HTTP 200
+[PASS] 14. Deleted shipment returns HTTP 404 on subsequent lookup
+
+TOTAL BACKEND TESTS: 28 PASSED, 0 FAILED
+```
+
+#### Frontend Integration Test Suite (`node test_phase5.js` in `frontend/`):
+```text
+====================================================
+DANODIA FREIGHTOS — PHASE 5 COMPLETE CRUD TEST SUITE
+====================================================
+[PASS] 1. Backend API health check (/api/health) is operational
+[PASS] 2. Registration of new test user succeeds
+[PASS] 3. Login returns valid JWT token
+[PASS] 4. Initial shipment list is clean (0 shipments for fresh user)
+[PASS] 5. Initial database summary cards show 0 shipments
+[PASS] 6. Create Shipment 1 (USA) via POST /api/shipments -> HTTP 201
+[PASS] 7. Create Shipment 2 (UK) via POST /api/shipments -> HTTP 201
+[PASS] 8. Database summary cards calculate real origin totals from PostgreSQL
+[PASS] 9. Search by invoice number returns matching shipment
+[PASS] 10. Search by FBA ID returns matching shipment
+[PASS] 11. Filter by region returns only UK shipments
+[PASS] 12. Retrieve shipment by ID (GET /api/shipments/:id) returns exact record
+[PASS] 13. Update shipment (PATCH /api/shipments/:id) modifies boxes and auto-derives Delivered status
+[PASS] 14. Delete shipment (DELETE /api/shipments/:id) -> HTTP 200
+[PASS] 15. List count decreased to 1 and deleted record is no longer returned
+[PASS] 16. Live /dashboard route responds with HTTP 200 and FreightOS layout
+
+TOTAL E2E TESTS: 16 PASSED, 0 FAILED
+```
+
 

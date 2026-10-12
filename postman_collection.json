@@ -15,6 +15,11 @@
       "key": "token",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "shipmentId",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -311,6 +316,170 @@
           "raw": "{{baseUrl}}/auth/logout",
           "host": ["{{baseUrl}}"],
           "path": ["auth", "logout"]
+        }
+      }
+    },
+    {
+      "name": "11. Get Dashboard Summary Aggregates",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/shipments/summary",
+          "host": ["{{baseUrl}}"],
+          "path": ["shipments", "summary"]
+        }
+      }
+    },
+    {
+      "name": "12. List All Shipments",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/shipments",
+          "host": ["{{baseUrl}}"],
+          "path": ["shipments"]
+        }
+      }
+    },
+    {
+      "name": "13. Create New Shipment",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"region\": \"USA\",\n  \"assigned_manager\": \"Marcus Sterling\",\n  \"invoice_no\": \"INV-2026-US-550\",\n  \"fba_id\": \"FBA18ZK99\",\n  \"container_no\": \"MSKU-99120-4\",\n  \"number_of_boxes\": 120,\n  \"total_weight_kg\": 2850.5,\n  \"volume_cbm\": 14.8,\n  \"pickup_date\": \"2026-10-01\",\n  \"sailing_date\": \"2026-10-06\",\n  \"expected_eta\": \"2026-10-24\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/shipments",
+          "host": ["{{baseUrl}}"],
+          "path": ["shipments"]
+        }
+      }
+    },
+    {
+      "name": "14. Get Shipment By ID",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/shipments/{{shipmentId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["shipments", "{{shipmentId}}"]
+        }
+      }
+    },
+    {
+      "name": "15. Update Shipment By ID",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"number_of_boxes\": 140,\n  \"actual_arrival\": \"2026-10-24\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/shipments/{{shipmentId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["shipments", "{{shipmentId}}"]
+        }
+      }
+    },
+    {
+      "name": "16. Search Shipments by Invoice or FBA",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/shipments?search=US-550",
+          "host": ["{{baseUrl}}"],
+          "path": ["shipments"],
+          "query": [
+            {
+              "key": "search",
+              "value": "US-550"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "17. Filter Shipments by Region",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/shipments?region=USA",
+          "host": ["{{baseUrl}}"],
+          "path": ["shipments"],
+          "query": [
+            {
+              "key": "region",
+              "value": "USA"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "18. Delete Shipment",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/shipments/{{shipmentId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["shipments", "{{shipmentId}}"]
         }
       }
     }
